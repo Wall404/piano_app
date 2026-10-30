@@ -104,13 +104,13 @@ React + TypeScript + Vite en el front, Tone.js para sonido y tiempo, OpenSheetMu
 | Capa | Elección | Por qué |
 | --- | --- | --- |
 | Base | [React](https://react.dev) + TypeScript + [Vite](https://vite.dev) | Lo que ya usa el prototipo. Arranque rápido, `vite --host` para probar en el teléfono. |
-| Estilos | CSS Modules con variables CSS (o Tailwind si el prototipo ya lo trae) | Tema claro/oscuro y colores de mano como tokens. Sin librería de componentes: la UI es a medida. |
+| Estilos | CSS plano con variables CSS (lo que usa el prototipo) | Tema claro/oscuro y colores de mano como tokens. Sin librería de componentes: la UI es a medida. |
 | Estado | [Zustand](https://zustand.docs.pmnd.rs) | Un store chico para partitura, transporte y ajustes; el teclado se suscribe solo a las notas activas. |
 | Partitura | [OpenSheetMusicDisplay](https://github.com/opensheetmusicdisplay/opensheetmusicdisplay) | Renderiza MusicXML/MXL con VexFlow y trae un cursor que recorre las notas con su `halfTone` y tiempo. |
 | MIDI | [@tonejs/midi](https://github.com/Tonejs/Midi) | Convierte un `.mid` a pistas y notas en JSON con tiempos en segundos y compases. |
 | Audio y tiempo | [Tone.js](https://tonejs.github.io) | `Transport` con `bpm`, `loop`, `loopStart` y `loopEnd` resuelve tempo y loop de sección; `Sampler` toca muestras de piano reales. |
 | Teclado | SVG propio en React | 88 teclas son 88 `<rect>`: no justifica una librería y da control total del diseño. |
-| Cascada (opcional) | Canvas 2D | Muchas barras animadas a 60 fps rinden mejor en canvas que en DOM. |
+| Cascada (opcional) | Canvas 2D | Muchas barras animadas a 60 fps rinden mejor en canvas que en DOM. El prototipo usa DOM y pasa a canvas en la fase 3. |
 | Persistencia | IndexedDB vía [idb-keyval](https://github.com/jakearchibald/idb-keyval) | Guardar archivos de partitura, secciones e historial con 2 funciones. |
 | PWA | [vite-plugin-pwa](https://vite-pwa-org.netlify.app) | Instalar en el teléfono y usar sin red. |
 | Entrada MIDI | Web MIDI API (nativa) | Teclado físico por USB/Bluetooth para el modo espera y la evaluación precisa. No funciona en Safari iOS. |
@@ -230,7 +230,7 @@ El riesgo mayor es la detección de acordes por micrófono; el plan lo aísla en
 | El micrófono exige HTTPS fuera de `localhost` | No anda desde el teléfono en la red local | Certificado local con mkcert o deploy de prueba en GitHub Pages |
 | Web MIDI no existe en Safari iOS | Sin modo espera con MIDI en iPhone | No aplica por ahora: el dispositivo principal es Android |
 | El OMR de los PDF (Audiveris) comete errores: notas, ritmos o manos mal leídas | Notas o manos mal asignadas | Revisar la partitura renderizada antes de practicar y corregir en MuseScore; preferir PDF digitales a escaneos; tests con archivos reales en `tests/fixtures` |
-| Muestras de piano pesan varios MB | Primera carga lenta en el teléfono | Cargar 1 muestra cada 3 semitonos (el Sampler interpola) y cachear con la PWA |
+| Muestras de piano pesan varios MB | Primera carga lenta en el teléfono | Hoy salen del CDN de Tone.js; en la fase 3 se copian a `public/samples/piano/` (1 muestra cada 3 semitonos, el Sampler interpola) y se cachean con la PWA |
 
 Respuestas de Wally (30/10/2026):
 
