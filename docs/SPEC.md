@@ -26,7 +26,7 @@ La v1 cubre los módulos 1 a 3; el módulo 4 (micrófono) es una fase aparte por
 - Normalizar todo a un modelo interno único de eventos (ver Arquitectura) para que el resto de la app no sepa de qué formato vino.
 - Biblioteca local: las partituras cargadas quedan guardadas en el navegador (IndexedDB) con título, fecha y último tempo y sección usados.
 - Incluir 2 o 3 partituras de ejemplo de dominio público para probar sin tener archivos.
-- PDF o foto de partitura queda fuera de la v1 (requiere OMR; ver Riesgos).
+- PDF (el formato que usa Wally): se convierte en la PC con Audiveris, un OMR open source, con `npm run pdf -- pieza.pdf`, que corre `audiveris -batch -transcribe -export -output scores/ pieza.pdf` y deja `pieza.mxl`. El reconocimiento comete errores, así que la app muestra la partitura renderizada para revisarla y, si hace falta, se corrige en MuseScore. Las partituras propias quedan fuera del repo (carpeta en `.gitignore`) porque el repo es público.
 
 ### 2. Teclado visual y partitura
 
@@ -54,7 +54,7 @@ La v1 cubre los módulos 1 a 3; el módulo 4 (micrófono) es una fase aparte por
 - Devolución en vivo: tecla verde si acertó, roja si fue otra nota, gris si faltó.
 - Devolución al terminar: % de notas correctas, % a tiempo, compases con más errores y sugerencia ("repetir compases 9 a 12 al 70 %").
 - Historial de sesiones por partitura para ver el progreso.
-- Alternativa más precisa: un teclado MIDI por USB o Bluetooth (Web MIDI) usa el mismo motor de evaluación sin depender del audio.
+- Camino principal: el Casio CDP-S110 conectado por USB (cable OTG en Android) manda las notas por Web MIDI, exactas y sin depender del audio, al mismo motor de evaluación. El micrófono queda para pianos acústicos o cuando no hay cable.
 
 ### 4.1 Calibración inicial (tuning)
 
@@ -88,7 +88,7 @@ La app es una web estática que corre en el navegador: se levanta con `npm run d
 | Tema | Requisito |
 | --- | --- |
 | Local-first | Sin backend ni login. Partituras, secciones e historial en IndexedDB del navegador. Funciona sin internet después de la primera carga (PWA). |
-| Mobile | Diseño mobile-first, uso principal en horizontal. Botones de al menos 44 × 44 px. Probar en Chrome Android y Safari iOS. |
+| Mobile | Diseño mobile-first, uso principal en horizontal. Botones de al menos 44 × 44 px. Dispositivo principal: Android con Chrome (soporta Web MIDI y micrófono); Safari iOS es secundario. |
 | Acceso desde el teléfono | Vite con `--host` para abrir la app desde el teléfono en la misma Wi-Fi. El micrófono exige HTTPS fuera de `localhost`, así que la fase 4 usa un certificado local (plugin de Vite o mkcert). |
 | Fluidez | Animación del teclado a 60 fps en un teléfono de gama media. Desfase entre sonido y tecla iluminada menor a 30 ms. |
 | Audio | El audio arranca tras un toque del usuario (regla de los navegadores). Muestras de piano cargadas una sola vez y cacheadas. |
@@ -117,9 +117,11 @@ React + TypeScript + Vite en el front, Tone.js para sonido y tiempo, OpenSheetMu
 | Micrófono, notas sueltas | [Pitchy](https://github.com/ianprime0509/pitchy) (McLeod) sobre `AnalyserNode` | Liviano, en tiempo real, suficiente para melodías de una nota. |
 | Micrófono, acordes | [Basic Pitch](https://github.com/spotify/basic-pitch) de Spotify (modelo TensorFlow.js, paquete `@spotify/basic-pitch`) | Transcripción polifónica audio a notas en el navegador. Procesa ventanas de 2 s a 22 050 Hz, así que se usa con algo de retraso, no nota a nota. |
 | Tests | [Vitest](https://vitest.dev) + Testing Library, Playwright para un flujo end-to-end | Mismo config que Vite. |
-| CI | GitHub Actions | Lint, tests y build en cada PR. Deploy opcional a GitHub Pages para probar desde el teléfono con HTTPS. |
+| CI | GitHub Actions | Lint, tests y build en cada PR. Deploy a GitHub Pages en cada merge a `main` (repo público): el teléfono abre la app con HTTPS sin configurar certificados. |
 
 Descartados: Next.js (no hace falta servidor), un framework móvil nativo (la PWA alcanza para la v1; Capacitor queda como opción si se quiere publicar en tiendas) y Magenta.js (sin mantenimiento activo).
+
+Herramienta externa: [Audiveris](https://github.com/audiveris/audiveris) (OMR open source, Java) instalado en la PC para pasar PDF a MusicXML. No es parte de la app; un script de npm lo invoca en modo batch.
 
 ## Arquitectura
 
@@ -209,13 +211,13 @@ Cinco fases; al cerrar la fase 2 ya hay una app usable para practicar, y el micr
 
 | Fase | Incluye | Terminado cuando |
 | --- | --- | --- |
-| 0 · Base | Vite + React + TS, CI en GitHub, teclado SVG estático, tema visual | El teclado de 88 teclas se ve bien en el teléfono en horizontal |
-| 1 · Ver | Carga MusicXML y MIDI, `Score`, teclado ilumina notas, sonido | Un ejemplo suena y se ilumina en sincronía (menos de 30 ms) |
+| 0 · Base | Vite + React + TS, CI y GitHub Pages, teclado SVG estático, tema visual | El teclado de 88 teclas se ve bien en el teléfono en horizontal |
+| 1 · Ver | PDF a MusicXML (Audiveris), carga, `Score`, teclado ilumina notas, sonido | Un ejemplo suena y se ilumina en sincronía (menos de 30 ms) |
 | **2 · Practicar** | Secciones, loop, tempo 25 a 150 %, metrónomo, manos, partitura | Loop de compases 5 a 8 al 50 % sin cortes ni desfase |
-| 3 · Pulir | Biblioteca, PWA, cascada, Web MIDI y modo espera | Se instala en el teléfono, anda sin red y espera al teclado MIDI |
-| 4 · Evaluar | Calibración, micrófono (Pitchy y Basic Pitch), devolución, historial | 90 % o más de notas bien detectadas en una pieza simple, piano real |
+| 3 · Pulir | Biblioteca, PWA, cascada, historial, Web MIDI: modo espera y evaluación | Se instala en el teléfono, anda sin red y evalúa con el Casio por USB |
+| 4 · Evaluar | Calibración y micrófono (Pitchy y Basic Pitch) para piano acústico | 90 % o más de notas bien detectadas en una pieza simple, piano real |
 
-Cada fase termina en un PR a `main` con la app funcionando. La fase 4 empieza con un prototipo aislado de detección (una página que muestra qué nota escucha) antes de integrarlo, para medir la precisión con el piano real.
+Con el Casio por USB, la evaluación exacta llega en la fase 3; el micrófono de la fase 4 pasa a ser un extra para pianos acústicos. Cada fase termina en un PR a `main` con la app funcionando. La fase 4 empieza con un prototipo aislado de detección (una página que muestra qué nota escucha) antes de integrarlo, para medir la precisión con el piano real.
 
 ## Riesgos y preguntas abiertas
 
@@ -226,16 +228,16 @@ El riesgo mayor es la detección de acordes por micrófono; el plan lo aísla en
 | Detectar acordes con el micrófono del teléfono es impreciso (armónicos, eco, ruido) | La devolución marca errores que no existen | Calibración inicial obligatoria (ver 4.1) que ajusta umbral, afinación y latencia al equipo real; empezar con melodías de una nota (Pitchy), sumar Basic Pitch para acordes con tolerancia amplia, y recomendar teclado MIDI para precisión |
 | Basic Pitch analiza ventanas de 2 s | Feedback de acordes con retraso | Feedback en vivo solo para notas sueltas; acordes evaluados al final del loop |
 | El micrófono exige HTTPS fuera de `localhost` | No anda desde el teléfono en la red local | Certificado local con mkcert o deploy de prueba en GitHub Pages |
-| Web MIDI no existe en Safari iOS | Sin modo espera con MIDI en iPhone | Documentarlo; en iOS el modo espera usa micrófono |
-| MusicXML exportados por distintos editores varían mucho | Notas o manos mal asignadas | Probar con MuseScore y Sibelius; tests con archivos reales en `tests/fixtures` |
+| Web MIDI no existe en Safari iOS | Sin modo espera con MIDI en iPhone | No aplica por ahora: el dispositivo principal es Android |
+| El OMR de los PDF (Audiveris) comete errores: notas, ritmos o manos mal leídas | Notas o manos mal asignadas | Revisar la partitura renderizada antes de practicar y corregir en MuseScore; preferir PDF digitales a escaneos; tests con archivos reales en `tests/fixtures` |
 | Muestras de piano pesan varios MB | Primera carga lenta en el teléfono | Cargar 1 muestra cada 3 semitonos (el Sampler interpola) y cachear con la PWA |
 
-Preguntas para Wally:
+Respuestas de Wally (30/10/2026):
 
-- [ ] ¿Tenés teclado MIDI o piano digital con USB? Cambia si el modo espera llega en la fase 3 o recién en la 4.
-- [ ] ¿Las partituras que vas a usar vienen en MusicXML (por ejemplo de MuseScore) o solo en PDF? Si son PDF hace falta convertirlas afuera (Audiveris o MuseScore) porque la app no hace OMR.
-- [ ] ¿Teléfono principal Android o iPhone? Define dónde se prueba primero.
-- [ ] ¿El repo de GitHub va a ser público? Si sí, GitHub Pages sirve como hosting de prueba con HTTPS.
+- [x] Teclado MIDI: piano digital Casio CDP-S110 (USB). La evaluación por MIDI pasa a la fase 3.
+- [x] Partituras: en PDF. Se agrega la conversión con Audiveris en la fase 1.
+- [x] Teléfono: Android. Se prueba primero en Chrome Android.
+- [x] Repo: público. GitHub Pages como hosting con HTTPS desde la fase 0; las partituras propias no se suben.
 
 ## Fuentes
 
