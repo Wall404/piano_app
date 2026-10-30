@@ -1,0 +1,217 @@
+# Piano APP — Spec y arquitectura
+
+30/10/2026 · Wally · Versión viva: [Claude Doc](https://claude.ai/artifact/3h9rki6Xc2L8HtagnUHzCP)
+
+## Visión y objetivos
+
+Piano APP convierte una partitura (MusicXML o MIDI) en un teclado animado que muestra qué teclas tocar en cada nota o acorde, para practicar por secciones a tu tempo y, en una fase posterior, recibir una devolución escuchando por el micrófono.
+
+- **Para quién:** pianistas principiantes e intermedios que leen poco o lento la partitura y aprenden mejor viendo las teclas.
+- **Dónde corre:** localmente en esta PC (navegador), con el código alojado en GitHub. Sin backend ni cuentas en la v1.
+- **Prioridad de diseño:** el front es el producto. Mobile-first: tiene que verse y usarse bien en un teléfono apoyado en el atril, en horizontal.
+
+Tres resultados definen el éxito de la v1:
+
+1. Cargar un MusicXML o MIDI propio y verlo en el teclado en menos de 5 segundos.
+2. Elegir un rango de compases, bajar el tempo y repetirlo en loop.
+3. Que la app escuche al usuario y marque qué notas acertó (fase avanzada).
+
+## Requisitos funcionales
+
+La v1 cubre los módulos 1 a 3; el módulo 4 (micrófono) es una fase aparte porque es la parte con más riesgo técnico.
+
+### 1. Carga de partituras
+
+- Abrir un archivo local: MusicXML (`.musicxml`, `.xml`), MusicXML comprimido (`.mxl`) y MIDI (`.mid`). Arrastrar y soltar en escritorio, selector de archivos en mobile.
+- Normalizar todo a un modelo interno único de eventos (ver Arquitectura) para que el resto de la app no sepa de qué formato vino.
+- Biblioteca local: las partituras cargadas quedan guardadas en el navegador (IndexedDB) con título, fecha y último tempo y sección usados.
+- Incluir 2 o 3 partituras de ejemplo de dominio público para probar sin tener archivos.
+- PDF o foto de partitura queda fuera de la v1 (requiere OMR; ver Riesgos).
+
+### 2. Teclado visual y partitura
+
+- Teclado de 88 teclas dibujado en SVG, con zoom y desplazamiento al rango que usa la pieza (en mobile se muestran 2 a 3 octavas y sigue la música).
+- En cada nota o acorde se iluminan las teclas a tocar. Color distinto por mano (derecha / izquierda, tomado del pentagrama o del canal MIDI).
+- Anticipación: las próximas notas se ven en tono tenue antes de sonar. Modo opcional de "cascada" (barras que caen hacia el teclado).
+- Partitura renderizada arriba del teclado (solo para MusicXML) con un cursor sincronizado al compás actual. En mobile horizontal la partitura se reduce a un sistema.
+- Digitación: si el MusicXML trae números de dedo, se muestran sobre la tecla.
+- Nombres de nota opcionales en las teclas (Do-Re-Mi o C-D-E).
+
+### 3. Práctica por secciones y tempo
+
+- Reproducción con sonido de piano, play / pausa / volver al inicio de la sección.
+- Elegir sección por rango de compases (desde / hasta) y repetirla en loop. Secciones guardadas con nombre por partitura.
+- Tempo de 25 % a 150 % del original, en pasos de 5 %, sin cambiar la afinación.
+- Metrónomo con cuenta previa de 1 compás.
+- Manos separadas: tocar o mostrar solo derecha, solo izquierda, o ambas.
+- Modo "espera": la reproducción se detiene en cada acorde hasta que el usuario toca la nota correcta (con teclado MIDI en v1, con micrófono en fase 4).
+- Subida de tempo automática opcional: +5 % cada N loops sin errores.
+
+### 4. Evaluación por micrófono (fase avanzada)
+
+- Pedir permiso de micrófono, calibrar ruido de fondo y afinación del piano (La4 de referencia).
+- Durante la práctica, detectar las notas que suenan y compararlas con las esperadas en una ventana de tiempo.
+- Devolución en vivo: tecla verde si acertó, roja si fue otra nota, gris si faltó.
+- Devolución al terminar: % de notas correctas, % a tiempo, compases con más errores y sugerencia ("repetir compases 9 a 12 al 70 %").
+- Historial de sesiones por partitura para ver el progreso.
+- Alternativa más precisa: un teclado MIDI por USB o Bluetooth (Web MIDI) usa el mismo motor de evaluación sin depender del audio.
+
+## Requisitos no funcionales
+
+La app es una web estática que corre en el navegador: se levanta con `npm run dev` en la PC y el teléfono la abre por la red local.
+
+| Tema | Requisito |
+| --- | --- |
+| Local-first | Sin backend ni login. Partituras, secciones e historial en IndexedDB del navegador. Funciona sin internet después de la primera carga (PWA). |
+| Mobile | Diseño mobile-first, uso principal en horizontal. Botones de al menos 44 × 44 px. Probar en Chrome Android y Safari iOS. |
+| Acceso desde el teléfono | Vite con `--host` para abrir la app desde el teléfono en la misma Wi-Fi. El micrófono exige HTTPS fuera de `localhost`, así que la fase 4 usa un certificado local (plugin de Vite o mkcert). |
+| Fluidez | Animación del teclado a 60 fps en un teléfono de gama media. Desfase entre sonido y tecla iluminada menor a 30 ms. |
+| Audio | El audio arranca tras un toque del usuario (regla de los navegadores). Muestras de piano cargadas una sola vez y cacheadas. |
+| Latencia de evaluación | Feedback de nota acertada en menos de 150 ms desde que suena. |
+| Accesibilidad | Contraste AA, los colores de mano también se distinguen por forma o etiqueta, controles usables con teclado físico. |
+| Privacidad | El audio del micrófono se procesa en el dispositivo y nunca se sube. |
+| Calidad | TypeScript estricto, tests unitarios del parser, del modelo de eventos y del evaluador. CI en GitHub Actions con lint, tests y build. |
+
+## Stack recomendado
+
+React + TypeScript + Vite en el front, Tone.js para sonido y tiempo, OpenSheetMusicDisplay para la partitura, y un teclado SVG propio. Nada de backend. Las APIs se verificaron con Context7 (documentación oficial de cada librería) el 30/10/2026.
+
+| Capa | Elección | Por qué |
+| --- | --- | --- |
+| Base | [React](https://react.dev) + TypeScript + [Vite](https://vite.dev) | Lo que ya usa el prototipo. Arranque rápido, `vite --host` para probar en el teléfono. |
+| Estilos | CSS Modules con variables CSS (o Tailwind si el prototipo ya lo trae) | Tema claro/oscuro y colores de mano como tokens. Sin librería de componentes: la UI es a medida. |
+| Estado | [Zustand](https://zustand.docs.pmnd.rs) | Un store chico para partitura, transporte y ajustes; el teclado se suscribe solo a las notas activas. |
+| Partitura | [OpenSheetMusicDisplay](https://github.com/opensheetmusicdisplay/opensheetmusicdisplay) | Renderiza MusicXML/MXL con VexFlow y trae un cursor que recorre las notas con su `halfTone` y tiempo. |
+| MIDI | [@tonejs/midi](https://github.com/Tonejs/Midi) | Convierte un `.mid` a pistas y notas en JSON con tiempos en segundos y compases. |
+| Audio y tiempo | [Tone.js](https://tonejs.github.io) | `Transport` con `bpm`, `loop`, `loopStart` y `loopEnd` resuelve tempo y loop de sección; `Sampler` toca muestras de piano reales. |
+| Teclado | SVG propio en React | 88 teclas son 88 `<rect>`: no justifica una librería y da control total del diseño. |
+| Cascada (opcional) | Canvas 2D | Muchas barras animadas a 60 fps rinden mejor en canvas que en DOM. |
+| Persistencia | IndexedDB vía [idb-keyval](https://github.com/jakearchibald/idb-keyval) | Guardar archivos de partitura, secciones e historial con 2 funciones. |
+| PWA | [vite-plugin-pwa](https://vite-pwa-org.netlify.app) | Instalar en el teléfono y usar sin red. |
+| Entrada MIDI | Web MIDI API (nativa) | Teclado físico por USB/Bluetooth para el modo espera y la evaluación precisa. No funciona en Safari iOS. |
+| Micrófono, notas sueltas | [Pitchy](https://github.com/ianprime0509/pitchy) (McLeod) sobre `AnalyserNode` | Liviano, en tiempo real, suficiente para melodías de una nota. |
+| Micrófono, acordes | [Basic Pitch](https://github.com/spotify/basic-pitch) de Spotify (modelo TensorFlow.js, paquete `@spotify/basic-pitch`) | Transcripción polifónica audio a notas en el navegador. Procesa ventanas de 2 s a 22 050 Hz, así que se usa con algo de retraso, no nota a nota. |
+| Tests | [Vitest](https://vitest.dev) + Testing Library, Playwright para un flujo end-to-end | Mismo config que Vite. |
+| CI | GitHub Actions | Lint, tests y build en cada PR. Deploy opcional a GitHub Pages para probar desde el teléfono con HTTPS. |
+
+Descartados: Next.js (no hace falta servidor), un framework móvil nativo (la PWA alcanza para la v1; Capacitor queda como opción si se quiere publicar en tiendas) y Magenta.js (sin mantenimiento activo).
+
+## Arquitectura
+
+Cada formato de entrada se convierte en un único modelo de notas (`Score`), y todo lo demás (teclado, sonido, loop, evaluación) lee de ese modelo. Así agregar un formato nuevo no toca la UI.
+
+```mermaid
+flowchart LR
+  A["Archivo de partitura<br/>.musicxml · .mxl · .mid"] --> B["Importadores<br/>OSMD y @tonejs/midi"]
+  B --> C["Score (modelo interno)<br/>NoteEvent[] + compases"]
+  A -- se guarda --> D["Biblioteca local<br/>IndexedDB + historial"]
+  C --> E["Motor de práctica<br/>Tone.js: tempo, loop, manos"]
+  E -- notas activas --> F["Vistas<br/>teclado, cascada, partitura"]
+  E -- notas esperadas --> G["Evaluador (fase 4)<br/>esperado vs. tocado"]
+  H["Entrada (fase 4)<br/>micrófono o Web MIDI"] --> G
+  G -- acierto o error --> F
+  G -- historial --> D
+```
+
+El motor de práctica es el único reloj: dice qué notas están activas y esas mismas notas son las que el evaluador espera escuchar.
+
+### Modelo de datos
+
+```ts
+type Hand = 'L' | 'R';
+
+interface NoteEvent {
+  midi: number;      // 21 (La0) a 108 (Do8)
+  time: number;      // segundos desde el inicio, a tempo original
+  duration: number;  // segundos
+  hand: Hand;
+  measure: number;   // compás, empieza en 1
+  finger?: number;   // 1 a 5, si la partitura lo trae
+}
+
+interface Score {
+  id: string;
+  title: string;
+  bpm: number;
+  timeSignature: [number, number];
+  measures: { index: number; start: number }[]; // inicio de cada compás en segundos
+  notes: NoteEvent[];                            // ordenadas por time
+  source: { kind: 'musicxml' | 'midi'; fileName: string };
+}
+
+interface Section { id: string; scoreId: string; name: string; fromMeasure: number; toMeasure: number }
+
+interface Attempt {
+  scoreId: string; sectionId?: string; date: string; tempoPct: number;
+  hits: number; wrong: number; missed: number; avgOffsetMs: number;
+}
+```
+
+Un acorde son varios `NoteEvent` con el mismo `time`. El tempo de práctica no cambia el modelo: el motor escala el reloj con `Transport.bpm`.
+
+### Módulos
+
+- **Importadores** (`src/import/`): `fromMusicXml(file)` usa OSMD y su cursor (nota, `halfTone`, tiempo, compás, pentagrama para la mano); `fromMidi(file)` usa @tonejs/midi (pista o canal para la mano). Ambos devuelven `Score`.
+- **Motor de práctica** (`src/engine/`): programa las notas en un `Tone.Part`, maneja `loopStart` / `loopEnd` por compás, tempo, metrónomo, manos y modo espera. Publica `activeNotes` y `currentMeasure` en el store.
+- **Vistas** (`src/components/`): `Keyboard` (SVG), `Waterfall` (canvas), `ScoreView` (OSMD con cursor), `TransportBar` (play, tempo, sección). Solo leen el store.
+- **Evaluador** (`src/eval/`): función pura `match(expected, played, toleranceMs) => Result` que no sabe de audio. Las fuentes (`MicSource` con Pitchy o Basic Pitch, `MidiSource` con Web MIDI) emiten `{ midi, time }`.
+- **Persistencia** (`src/storage/`): guarda el archivo original y el `Score` parseado, secciones e intentos.
+
+### Estructura de carpetas
+
+```text
+piano_app/
+  docs/SPEC.md
+  public/samples/piano/    muestras del Sampler
+  public/scores/           partituras de ejemplo
+  src/
+    import/                musicxml.ts, midi.ts
+    model/                 types.ts
+    engine/                transport.ts, sections.ts
+    eval/                  match.ts, mic.ts, midiInput.ts
+    storage/               db.ts
+    store/                 usePlayer.ts (Zustand)
+    components/            Keyboard, Waterfall, ScoreView, TransportBar
+    pages/                 Library, Practice, Results
+  tests/
+```
+
+Tres pantallas: **Biblioteca** (lista y carga), **Práctica** (partitura, teclado y controles) y **Resultados** (devolución de la sesión y progreso).
+
+## Roadmap
+
+Cinco fases; al cerrar la fase 2 ya hay una app usable para practicar, y el micrófono llega al final porque es lo más incierto.
+
+| Fase | Incluye | Terminado cuando |
+| --- | --- | --- |
+| 0 · Base | Vite + React + TS, CI en GitHub, teclado SVG estático, tema visual | El teclado de 88 teclas se ve bien en el teléfono en horizontal |
+| 1 · Ver | Carga MusicXML y MIDI, `Score`, teclado ilumina notas, sonido | Un ejemplo suena y se ilumina en sincronía (menos de 30 ms) |
+| **2 · Practicar** | Secciones, loop, tempo 25 a 150 %, metrónomo, manos, partitura | Loop de compases 5 a 8 al 50 % sin cortes ni desfase |
+| 3 · Pulir | Biblioteca, PWA, cascada, Web MIDI y modo espera | Se instala en el teléfono, anda sin red y espera al teclado MIDI |
+| 4 · Evaluar | Micrófono (Pitchy, luego Basic Pitch), devolución, historial | 90 % o más de notas bien detectadas en una pieza simple, piano real |
+
+Cada fase termina en un PR a `main` con la app funcionando. La fase 4 empieza con un prototipo aislado de detección (una página que muestra qué nota escucha) antes de integrarlo, para medir la precisión con el piano real.
+
+## Riesgos y preguntas abiertas
+
+El riesgo mayor es la detección de acordes por micrófono; el plan lo aísla en la fase 4 y ofrece el teclado MIDI como camino preciso.
+
+| Riesgo | Impacto | Mitigación |
+| --- | --- | --- |
+| Detectar acordes con el micrófono del teléfono es impreciso (armónicos, eco, ruido) | La devolución marca errores que no existen | Empezar con melodías de una nota (Pitchy), sumar Basic Pitch para acordes con tolerancia amplia, y recomendar teclado MIDI para precisión |
+| Basic Pitch analiza ventanas de 2 s | Feedback de acordes con retraso | Feedback en vivo solo para notas sueltas; acordes evaluados al final del loop |
+| El micrófono exige HTTPS fuera de `localhost` | No anda desde el teléfono en la red local | Certificado local con mkcert o deploy de prueba en GitHub Pages |
+| Web MIDI no existe en Safari iOS | Sin modo espera con MIDI en iPhone | Documentarlo; en iOS el modo espera usa micrófono |
+| MusicXML exportados por distintos editores varían mucho | Notas o manos mal asignadas | Probar con MuseScore y Sibelius; tests con archivos reales en `tests/fixtures` |
+| Muestras de piano pesan varios MB | Primera carga lenta en el teléfono | Cargar 1 muestra cada 3 semitonos (el Sampler interpola) y cachear con la PWA |
+
+Preguntas para Wally:
+
+- [ ] ¿Tenés teclado MIDI o piano digital con USB? Cambia si el modo espera llega en la fase 3 o recién en la 4.
+- [ ] ¿Las partituras que vas a usar vienen en MusicXML (por ejemplo de MuseScore) o solo en PDF? Si son PDF hace falta convertirlas afuera (Audiveris o MuseScore) porque la app no hace OMR.
+- [ ] ¿Teléfono principal Android o iPhone? Define dónde se prueba primero.
+- [ ] ¿El repo de GitHub va a ser público? Si sí, GitHub Pages sirve como hosting de prueba con HTTPS.
+
+## Fuentes
+
+APIs verificadas con Context7 el 30/10/2026: [OpenSheetMusicDisplay, extracción de notas con el cursor](https://github.com/opensheetmusicdisplay/opensheetmusicdisplay/wiki/Tutorial---Extracting-note-timing-for-playing), [Tone.js Transport (bpm, loop)](https://github.com/tonejs/tonejs.github.io/blob/master/_autodocs/api-reference/transport.md), [Basic Pitch (ventana de 2 s a 22 050 Hz)](https://github.com/spotify/basic-pitch/blob/main/basic_pitch/constants.py).
