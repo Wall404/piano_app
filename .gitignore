@@ -3,3 +3,6 @@ dist
 .DS_Store
 *.log
 .vite
+
+# Partituras propias: el repo es público
+scores/

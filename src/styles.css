@@ -10,6 +10,8 @@
   --left: #c06bff;
   --left-deep: #7a2ee0;
   --soon: rgba(255, 214, 102, 0.85);
+  --ok: #3ddc97;
+  --bad: #ff5d73;
   --radius: 16px;
   --gutter: 16px;
   --kb-height: clamp(120px, 24dvh, 230px);
@@ -71,8 +73,8 @@ button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-c
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .np::before { content: ''; width: 8px; height: 8px; border-radius: 50%; flex: none; }
-.np.left::before { background: var(--left); box-shadow: 0 0 10px var(--left); }
-.np.right::before { background: var(--right); box-shadow: 0 0 10px var(--right); }
+.np.L::before { background: var(--left); box-shadow: 0 0 10px var(--left); }
+.np.R::before { background: var(--right); box-shadow: 0 0 10px var(--right); }
 
 /* ---------- Instrumento ---------- */
 .instrument {
@@ -115,12 +117,12 @@ button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-c
   font-size: clamp(8px, 1.6vw, 12px); font-weight: 700; color: rgba(5, 10, 30, 0.75);
   transition: filter 0.15s, opacity 0.2s;
 }
-.note.right { background: linear-gradient(180deg, var(--right), var(--right-deep)); box-shadow: 0 0 14px rgba(56, 225, 255, 0.35); }
-.note.left { background: linear-gradient(180deg, var(--left), var(--left-deep)); box-shadow: 0 0 14px rgba(192, 107, 255, 0.35); color: rgba(255, 255, 255, 0.85); }
+.note.R { background: linear-gradient(180deg, var(--right), var(--right-deep)); box-shadow: 0 0 14px rgba(56, 225, 255, 0.35); }
+.note.L { background: linear-gradient(180deg, var(--left), var(--left-deep)); box-shadow: 0 0 14px rgba(192, 107, 255, 0.35); color: rgba(255, 255, 255, 0.85); }
 .note.black { filter: saturate(1.3) brightness(0.85); }
 .note.hit { filter: brightness(1.35); box-shadow: 0 0 22px 2px currentColor; }
-.note.right.hit { color: #022; box-shadow: 0 0 26px 4px rgba(56, 225, 255, 0.7); }
-.note.left.hit { box-shadow: 0 0 26px 4px rgba(192, 107, 255, 0.7); }
+.note.R.hit { color: #022; box-shadow: 0 0 26px 4px rgba(56, 225, 255, 0.7); }
+.note.L.hit { box-shadow: 0 0 26px 4px rgba(192, 107, 255, 0.7); }
 .note.muted { opacity: 0.15; box-shadow: none; }
 
 .now-line {
@@ -130,45 +132,21 @@ button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-c
 }
 
 /* ---------- Teclado ---------- */
-.keyboard {
-  position: relative; touch-action: none; user-select: none;
-  background: #05070f;
-  padding-top: 4px;
-}
-.key { position: absolute; top: 0; transition: background 0.08s, box-shadow 0.12s, transform 0.08s; }
-.key.white {
-  height: 100%;
-  border-radius: 0 0 8px 8px;
-  background: linear-gradient(180deg, #d9dcea 0%, #f7f8fc 12%, #ffffff 88%, #e3e6f2 100%);
-  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.18), inset 0 -6px 0 rgba(0, 0, 0, 0.08);
-}
-.key.black {
-  height: 62%; z-index: 2;
-  border-radius: 0 0 5px 5px;
-  background: linear-gradient(180deg, #2a2f45 0%, #10131f 70%, #1d2234 100%);
-  box-shadow: 0 3px 4px rgba(0, 0, 0, 0.55), inset 0 -4px 0 rgba(255, 255, 255, 0.06);
-}
-.key.soon.white { background: linear-gradient(180deg, #e9e3cf, #fff7da 60%, #fff); box-shadow: inset 0 -5px 0 var(--soon), inset -1px 0 0 rgba(0, 0, 0, 0.18); }
-.key.soon.black { box-shadow: inset 0 -5px 0 var(--soon), 0 3px 4px rgba(0, 0, 0, 0.55); }
-
-.key.on { transform: translateY(2px); }
-.key.on.white.right { background: linear-gradient(180deg, #8ff0ff, var(--right) 55%, var(--right-deep)); box-shadow: 0 0 26px rgba(56, 225, 255, 0.75), inset 0 -4px 0 rgba(0, 0, 0, 0.15); }
-.key.on.white.left { background: linear-gradient(180deg, #e2bfff, var(--left) 55%, var(--left-deep)); box-shadow: 0 0 26px rgba(192, 107, 255, 0.75), inset 0 -4px 0 rgba(0, 0, 0, 0.15); }
-.key.on.black.right { background: linear-gradient(180deg, var(--right), var(--right-deep)); box-shadow: 0 0 20px rgba(56, 225, 255, 0.9); }
-.key.on.black.left { background: linear-gradient(180deg, var(--left), var(--left-deep)); box-shadow: 0 0 20px rgba(192, 107, 255, 0.9); }
-.key.pressed { filter: brightness(0.85); transform: translateY(2px); }
-
-.key-label, .key-c {
-  position: absolute; left: 0; right: 0; bottom: 8px; text-align: center;
-  font-size: clamp(8px, 1.8vw, 13px); font-weight: 700; pointer-events: none;
-}
-.key-label { color: rgba(4, 10, 30, 0.85); }
-.key.black .key-label { bottom: 5px; color: #fff; font-size: clamp(7px, 1.4vw, 11px); }
-.key-c { color: #9aa0bd; font-weight: 400; font-size: clamp(7px, 1.5vw, 11px); }
+.keyboard { position: relative; overflow: hidden; touch-action: none; user-select: none; background: #05070f; }
+.keyboard svg { display: block; position: absolute; inset: 0; }
+.key { cursor: pointer; }
+.key.on.R rect { filter: drop-shadow(0 0 8px rgba(56, 225, 255, 0.85)); }
+.key.on.L rect { filter: drop-shadow(0 0 8px rgba(192, 107, 255, 0.85)); }
+.key.pressed rect { filter: brightness(0.85); }
+.key.hit-ok rect { fill: var(--ok); }
+.key.hit-bad rect { fill: var(--bad); }
+.lbl { text-anchor: middle; font-weight: 700; fill: rgba(4, 10, 30, 0.85); pointer-events: none; }
+.lbl.dark { fill: #fff; }
+.lbl.c { fill: #9aa0bd; font-weight: 400; }
 
 /* ---------- Controles ---------- */
 .transport {
-  display: grid; gap: 10px;
+  display: grid; gap: 10px; grid-auto-rows: max-content;
   padding: 12px; border-radius: var(--radius);
   background: var(--panel); border: 1px solid var(--panel-border);
   backdrop-filter: blur(12px);
@@ -220,7 +198,7 @@ input[type='range']::-moz-range-thumb {
 .chip.sel { background: rgba(255, 214, 102, 0.14); border-color: rgba(255, 214, 102, 0.55); color: #ffe7a3; }
 .chip.sel small { color: #e5cf8f; }
 
-.toggles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.toggles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .toggle {
   display: flex; align-items: center; justify-content: center; gap: 6px;
   padding: 8px 6px; border-radius: 12px; font-size: 0.8rem; color: var(--text-dim);
@@ -229,12 +207,25 @@ input[type='range']::-moz-range-thumb {
 .toggle .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); }
 .toggle.on { color: var(--text); background: rgba(255, 255, 255, 0.06); }
 .toggle.on .dot { background: #8affc1; box-shadow: 0 0 8px #8affc1; }
-.toggle.on.left .dot { background: var(--left); box-shadow: 0 0 8px var(--left); }
-.toggle.on.right .dot { background: var(--right); box-shadow: 0 0 8px var(--right); }
+.toggle.on.L .dot { background: var(--left); box-shadow: 0 0 8px var(--left); }
+.toggle.on.R .dot { background: var(--right); box-shadow: 0 0 8px var(--right); }
+
+
+.toggle:disabled { opacity: 0.4; cursor: not-allowed; }
+.np.waiting { flex: none; color: #ffe7a3; border-color: rgba(255, 214, 102, 0.55); }
+.np.waiting::before { background: var(--soon); }
+.midi-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 12px;
+  border-radius: 12px; font-size: 0.85rem; color: var(--text-dim);
+  background: transparent; border: 1px dashed var(--panel-border);
+}
+.midi-btn .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); }
+.midi-btn.on { color: var(--text); border-style: solid; }
+.midi-btn.on .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+.midi-error { margin: 0; color: var(--bad); font-size: 0.8rem; }
 
 /* Pantallas angostas: controles en dos filas de toggles. */
 @media (max-width: 420px) {
-  .toggles { grid-template-columns: repeat(2, 1fr); }
   .brand h1 { font-size: 1rem; }
 }
 
