@@ -36,17 +36,16 @@ export function groupChords(notes: NoteEvent[], toleranceSec = 0.02): Chord[] {
   return chords
 }
 
-/** Primer acorde ya alcanzado que falta tocar en el modo espera. */
-export function dueChord(
+/** Próximo acorde a tocar en el modo espera, sin importar por dónde va el reloj. */
+export function nextChord(
   chords: Chord[],
   cleared: number,
-  position: number,
-  rangeStart: number,
+  range: { start: number; end: number },
   hands: Record<Hand, boolean>,
 ): Chord | null {
   for (const c of chords) {
-    if (c.time > position) return null
-    if (c.time <= cleared || c.time < rangeStart) continue
+    if (c.time >= range.end) return null
+    if (c.time <= cleared || c.time < range.start) continue
     if (c.notes.some((n) => hands[n.hand])) return c
   }
   return null
