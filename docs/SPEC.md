@@ -49,12 +49,37 @@ La v1 cubre los módulos 1 a 3; el módulo 4 (micrófono) es una fase aparte por
 
 ### 4. Evaluación por micrófono (fase avanzada)
 
-- Pedir permiso de micrófono, calibrar ruido de fondo y afinación del piano (La4 de referencia).
+- Antes de evaluar por primera vez, la app pide permiso de micrófono y corre la calibración inicial (ver 4.1).
 - Durante la práctica, detectar las notas que suenan y compararlas con las esperadas en una ventana de tiempo.
 - Devolución en vivo: tecla verde si acertó, roja si fue otra nota, gris si faltó.
 - Devolución al terminar: % de notas correctas, % a tiempo, compases con más errores y sugerencia ("repetir compases 9 a 12 al 70 %").
 - Historial de sesiones por partitura para ver el progreso.
 - Alternativa más precisa: un teclado MIDI por USB o Bluetooth (Web MIDI) usa el mismo motor de evaluación sin depender del audio.
+
+### 4.1 Calibración inicial (tuning)
+
+Un asistente de 1 a 2 minutos le pide al usuario tocar notas concretas para que la app aprenda cómo suena *su* piano en *su* habitación con *su* teléfono. Es obligatorio antes de la primera evaluación y se puede repetir desde Ajustes.
+
+1. **Silencio (3 s):** mide el ruido de fondo y fija el umbral a partir del cual algo cuenta como nota.
+2. **La4 sostenido:** mide la frecuencia real del La4 y guarda el desvío en cents. Un piano desafinado 30 cents abajo sigue reconociéndose bien.
+3. **Una nota por registro (Do2, Do4, Do6):** comprueba que se detectan graves, medios y agudos, y ajusta la sensibilidad por registro. Si un registro falla, la app lo avisa ("tu micrófono no capta bien los graves").
+4. **Tocar junto al metrónomo (4 golpes en Do4):** el promedio del desfase entre el clic y la nota detectada es la latencia de entrada del dispositivo; el evaluador la resta antes de juzgar si una nota fue a tiempo.
+5. **Acorde de Do mayor (Do4-Mi4-Sol4):** prueba si el dispositivo detecta acordes. Si no, la evaluación de esa sesión se limita a notas sueltas y lo dice.
+
+El resultado se guarda como perfil por dispositivo en IndexedDB:
+
+```ts
+interface CalibrationProfile {
+  deviceId: string; date: string;
+  noiseFloorDb: number;         // umbral de ruido
+  a4Hz: number; centsOffset: number;
+  latencyMs: number;            // latencia de entrada medida
+  registerGain: { low: number; mid: number; high: number };
+  chordsSupported: boolean;
+}
+```
+
+Con teclado MIDI solo se corre el paso 4 (latencia), porque las notas llegan exactas. La app sugiere recalibrar si cambia el dispositivo de entrada o si en una sesión más del 30 % de las notas quedan como "no detectadas".
 
 ## Requisitos no funcionales
 
@@ -188,7 +213,7 @@ Cinco fases; al cerrar la fase 2 ya hay una app usable para practicar, y el micr
 | 1 · Ver | Carga MusicXML y MIDI, `Score`, teclado ilumina notas, sonido | Un ejemplo suena y se ilumina en sincronía (menos de 30 ms) |
 | **2 · Practicar** | Secciones, loop, tempo 25 a 150 %, metrónomo, manos, partitura | Loop de compases 5 a 8 al 50 % sin cortes ni desfase |
 | 3 · Pulir | Biblioteca, PWA, cascada, Web MIDI y modo espera | Se instala en el teléfono, anda sin red y espera al teclado MIDI |
-| 4 · Evaluar | Micrófono (Pitchy, luego Basic Pitch), devolución, historial | 90 % o más de notas bien detectadas en una pieza simple, piano real |
+| 4 · Evaluar | Calibración, micrófono (Pitchy y Basic Pitch), devolución, historial | 90 % o más de notas bien detectadas en una pieza simple, piano real |
 
 Cada fase termina en un PR a `main` con la app funcionando. La fase 4 empieza con un prototipo aislado de detección (una página que muestra qué nota escucha) antes de integrarlo, para medir la precisión con el piano real.
 
@@ -198,7 +223,7 @@ El riesgo mayor es la detección de acordes por micrófono; el plan lo aísla en
 
 | Riesgo | Impacto | Mitigación |
 | --- | --- | --- |
-| Detectar acordes con el micrófono del teléfono es impreciso (armónicos, eco, ruido) | La devolución marca errores que no existen | Empezar con melodías de una nota (Pitchy), sumar Basic Pitch para acordes con tolerancia amplia, y recomendar teclado MIDI para precisión |
+| Detectar acordes con el micrófono del teléfono es impreciso (armónicos, eco, ruido) | La devolución marca errores que no existen | Calibración inicial obligatoria (ver 4.1) que ajusta umbral, afinación y latencia al equipo real; empezar con melodías de una nota (Pitchy), sumar Basic Pitch para acordes con tolerancia amplia, y recomendar teclado MIDI para precisión |
 | Basic Pitch analiza ventanas de 2 s | Feedback de acordes con retraso | Feedback en vivo solo para notas sueltas; acordes evaluados al final del loop |
 | El micrófono exige HTTPS fuera de `localhost` | No anda desde el teléfono en la red local | Certificado local con mkcert o deploy de prueba en GitHub Pages |
 | Web MIDI no existe en Safari iOS | Sin modo espera con MIDI en iPhone | Documentarlo; en iOS el modo espera usa micrófono |
