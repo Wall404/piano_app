@@ -224,6 +224,44 @@ input[type='range']::-moz-range-thumb {
 .midi-btn.on .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 .midi-error { margin: 0; color: var(--bad); font-size: 0.8rem; }
 
+/* ---------- Biblioteca ---------- */
+.library { max-width: 720px; margin: 0 auto; padding: max(20px, env(safe-area-inset-top)) var(--gutter) 32px; display: grid; gap: 14px; }
+.library h2 { margin: 12px 0 0; font-size: 0.8rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+.library .brand h1 { font-size: 1.5rem; }
+.drop {
+  display: grid; gap: 4px; padding: 24px 16px; border-radius: var(--radius); text-align: center;
+  background: var(--panel); border: 1.5px dashed rgba(56, 225, 255, 0.45);
+}
+.drop strong { font-size: 1.1rem; font-weight: 600; }
+.drop span, .empty { color: var(--text-dim); font-size: 0.85rem; }
+.empty { margin: 0; }
+.score-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.score-list li { display: flex; align-items: center; gap: 8px; }
+.score-row {
+  flex: 1; min-width: 0; min-height: 56px; display: grid; gap: 2px; padding: 10px 14px; text-align: left; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--panel-border);
+}
+.score-row strong { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.score-row small { color: var(--text-dim); }
+.back { font-size: 1.2rem; }
+
+/* ---------- Partitura y devolución ---------- */
+.instrument { position: relative; }
+.score-view { min-height: 120px; overflow-y: auto; background: #fbfaf6; color: #111; }
+.result {
+  position: absolute; z-index: 5; top: 10px; left: 10px; right: 10px; max-width: 420px; margin: 0 auto;
+  display: grid; gap: 4px; padding: 12px 40px 12px 14px; border-radius: 14px;
+  background: rgba(14, 19, 40, 0.95); border: 1px solid rgba(61, 220, 151, 0.5); box-shadow: 0 10px 34px rgba(0, 0, 0, 0.5);
+}
+.result strong { font-size: 1.2rem; color: var(--ok); }
+.result p { margin: 0; font-size: 0.85rem; }
+.result-close { position: absolute; top: 2px; right: 2px; width: 44px; height: 44px; background: none; border: 0; font-size: 1.2rem; }
+.chip.range { color: var(--text-dim); align-items: center; }
+.chip.range input {
+  width: 3.2em; padding: 2px 4px; text-align: center; font: inherit; color: var(--text);
+  background: rgba(255, 255, 255, 0.08); border: 1px solid var(--panel-border); border-radius: 6px;
+}
+
 /* Pantallas angostas: controles en dos filas de toggles. */
 @media (max-width: 420px) {
   .brand h1 { font-size: 1rem; }

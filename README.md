@@ -3,19 +3,25 @@
 App web (mobile-first) para practicar piano: carga una partitura, muestra las notas cayendo
 sobre un teclado animado y resalta qué teclas tocar en cada nota o acorde.
 
-Este es el esqueleto inicial: reproduce una partitura de ejemplo (*Oda a la alegría*).
+Probala en https://wall404.github.io/piano_app/ (Chrome en Android o en la compu).
 
 ## Qué hace hoy
 
+- Biblioteca local: carga MusicXML, MXL y MIDI, y los guarda en el navegador.
+- Partitura dibujada con un cursor que sigue el compás (solo MusicXML).
 - Teclado SVG ajustado al rango de la obra, o las 88 teclas completas.
-- Notas que caen hacia el teclado, con colores por mano (derecha celeste, izquierda violeta).
-- Teclas resaltadas al sonar y aviso suave de la próxima tecla.
-- Práctica por secciones con repetición en bucle.
-- Velocidad de 25 % a 150 %, barra de posición y contador de compás.
-- Practicar con una sola mano (la otra queda atenuada y en silencio).
-- Sonido de piano con muestras reales (Tone.js); necesita conexión para cargarlas.
-- Teclado MIDI por USB (Web MIDI): tus notas se marcan en verde o rojo y el modo espera
-  sigue tu ritmo: frena en cada acorde y salta al siguiente si lo tocás antes. Requiere Chrome con HTTPS o localhost.
+- Notas que caen hacia el teclado, con colores por mano, y aviso de la próxima tecla.
+- Práctica por rango de compases en bucle, velocidad de 25 % a 150 %, metrónomo y una mano por vez.
+- Sonido de piano con muestras reales (Tone.js), guardadas para usar sin red después de la primera vez.
+- Teclado MIDI por USB (Web MIDI): tus notas se marcan en verde o rojo, el modo espera sigue tu
+  ritmo y cada pasada termina con una devolución y una sugerencia. Requiere Chrome con HTTPS o localhost.
+- Instalable como app en el teléfono (PWA).
+
+## PDF a MusicXML
+
+Instalá [Audiveris](https://github.com/audiveris/audiveris) y corré `npm run pdf -- pieza.pdf`.
+El resultado queda en `scores/`, que no se sube al repo. El reconocimiento comete errores:
+revisá la partitura en la app y corregila en MuseScore si hace falta.
 
 ## Requisitos
 

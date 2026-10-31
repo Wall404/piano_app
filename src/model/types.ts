@@ -20,10 +20,8 @@ export interface Score {
   source: { kind: 'musicxml' | 'midi' | 'builtin'; fileName: string }
 }
 
-export interface Section {
-  id: string
-  scoreId: string
-  name: string
-  fromMeasure: number
-  toMeasure: number
+/** Compases a practicar, inclusive. */
+export interface MeasureRange {
+  from: number
+  to: number
 }

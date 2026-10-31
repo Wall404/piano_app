@@ -1,14 +1,22 @@
 import { parseNote } from './notes'
-import type { Hand, NoteEvent, Score, Section } from './types'
+import type { Hand, MeasureRange, NoteEvent, Score } from './types'
 
 export const scoreEnd = (score: Score) => Math.max(...score.notes.map((n) => n.time + n.duration))
 
-export function sectionRange(score: Score, section: Section | null) {
-  if (!section) return { start: 0, end: scoreEnd(score) }
+export function timeRange(score: Score, range: MeasureRange | null) {
+  if (!range) return { start: 0, end: scoreEnd(score) }
   return {
-    start: score.measures[section.fromMeasure - 1].start,
-    end: score.measures[section.toMeasure]?.start ?? scoreEnd(score),
+    start: score.measures[range.from - 1].start,
+    end: score.measures[range.to]?.start ?? scoreEnd(score),
   }
+}
+
+/** Divide la obra en tramos de `size` compases, para elegir sección con un toque. */
+export function measureChunks(score: Score, size = 4): MeasureRange[] {
+  const count = score.measures.length
+  const chunks: MeasureRange[] = []
+  for (let from = 1; from <= count; from += size) chunks.push({ from, to: Math.min(from + size - 1, count) })
+  return chunks
 }
 
 export function measureAt(score: Score, time: number): number {

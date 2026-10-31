@@ -1,14 +1,16 @@
 import { create } from 'zustand'
-import type { Hand } from '../model/types'
+import type { Result } from '../eval/match'
+import type { Hand, MeasureRange } from '../model/types'
 
 export interface PlayerState {
   playing: boolean
   loadingAudio: boolean
   waiting: boolean // modo espera: detenido hasta que se toque el acorde
   tempoPct: number
-  sectionId: string | null
+  range: MeasureRange | null
   repeat: boolean
   sound: boolean
+  metronome: boolean
   hands: Record<Hand, boolean>
   waitMode: boolean
   allKeys: boolean
@@ -20,16 +22,19 @@ export interface PlayerState {
   played: Set<number> // notas apretadas en el teclado MIDI
   midiDevices: string[] | null // null: sin conectar
   midiError: string | null
+  result: Result | null // devolución de la última pasada
+  view: 'falls' | 'score'
 }
 
-export const usePlayer = create<PlayerState>(() => ({
+export const initialState: PlayerState = {
   playing: false,
   loadingAudio: false,
   waiting: false,
   tempoPct: 100,
-  sectionId: null,
+  range: null,
   repeat: true,
   sound: true,
+  metronome: false,
   hands: { L: true, R: true },
   waitMode: false,
   allKeys: false,
@@ -41,4 +46,8 @@ export const usePlayer = create<PlayerState>(() => ({
   played: new Set(),
   midiDevices: null,
   midiError: null,
-}))
+  result: null,
+  view: 'falls',
+}
+
+export const usePlayer = create<PlayerState>(() => initialState)
