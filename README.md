@@ -15,7 +15,7 @@ Este es el esqueleto inicial: reproduce una partitura de ejemplo (*Oda a la aleg
 - Practicar con una sola mano (la otra queda atenuada y en silencio).
 - Sonido de piano con muestras reales (Tone.js); necesita conexión para cargarlas.
 - Teclado MIDI por USB (Web MIDI): tus notas se marcan en verde o rojo y el modo espera
-  frena en cada acorde hasta que lo tocás. Requiere Chrome con HTTPS o localhost.
+  sigue tu ritmo: frena en cada acorde y salta al siguiente si lo tocás antes. Requiere Chrome con HTTPS o localhost.
 
 ## Requisitos
 

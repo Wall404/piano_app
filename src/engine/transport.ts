@@ -1,6 +1,6 @@
 import * as Tone from 'tone'
 import { connectMidi, type MidiNote } from '../eval/midiInput'
-import { dueChord, groupChords, measureAt, sectionRange, type Chord } from '../model/score'
+import { groupChords, measureAt, nextChord, sectionRange, type Chord } from '../model/score'
 import type { Hand, NoteEvent, Score, Section } from '../model/types'
 import { usePlayer } from '../store/usePlayer'
 
@@ -37,7 +37,8 @@ export class Engine {
   private loading: Promise<void> | null = null
   private raf = 0
   private cleared = -Infinity // último acorde resuelto en el modo espera
-  private pending: Set<number> | null = null
+  private target: Chord | null = null
+  private pending = new Set<number>() // notas del acorde que faltan
   private sig = ''
 
   constructor(
@@ -48,6 +49,10 @@ export class Engine {
     this.range = sectionRange(score, null)
     this.chords = groupChords(score.notes)
     this.transport.bpm.value = score.bpm
+    this.transport.on('loop', () => {
+      this.cleared = -Infinity
+      this.target = null
+    })
 
     const events = score.notes.map((note) => ({ time: this.tickTime(note.time), note }))
     new Tone.Part<{ time: string; note: NoteEvent }>((time, e) => this.sound(time, e.note), events).start(0)
@@ -110,7 +115,7 @@ export class Engine {
   pause() {
     this.transport.pause()
     cancelAnimationFrame(this.raf)
-    this.pending = null
+    this.target = null
     usePlayer.setState({ playing: false, waiting: false })
   }
 
@@ -121,7 +126,7 @@ export class Engine {
   seek(sec: number) {
     this.transport.ticks = this.secToTicks(Math.max(sec, -this.leadSec))
     this.cleared = sec
-    this.pending = null
+    this.target = null
     this.publish(sec)
   }
 
@@ -143,12 +148,13 @@ export class Engine {
   setWaitMode(waitMode: boolean) {
     const { waiting } = usePlayer.getState()
     this.cleared = this.position()
-    this.pending = null
+    this.target = null
     usePlayer.setState({ waitMode, waiting: false })
     if (waiting) this.transport.start()
   }
 
   setHands(hands: Record<Hand, boolean>) {
+    this.target = null
     usePlayer.setState({ hands })
     this.publish(this.position())
   }
@@ -175,13 +181,30 @@ export class Engine {
     else played.delete(midi)
     usePlayer.setState({ played })
 
-    if (!on || !this.pending) return
+    const { waitMode, playing } = usePlayer.getState()
+    if (!on || !waitMode || !playing) return
+    this.aimNextChord()
+    if (!this.target) return
     this.pending.delete(midi)
-    if (this.pending.size === 0) {
-      this.pending = null
+    if (this.pending.size > 0) return
+
+    // Acorde completo: si se tocó antes de tiempo, el reloj salta hasta él.
+    const { time } = this.target
+    this.cleared = time
+    this.target = null
+    if (usePlayer.getState().waiting) {
       usePlayer.setState({ waiting: false })
       this.transport.start()
+    } else if (this.position() < time) {
+      this.transport.ticks = this.secToTicks(time)
     }
+  }
+
+  private aimNextChord() {
+    if (this.target) return
+    const { hands } = usePlayer.getState()
+    this.target = nextChord(this.chords, this.cleared, this.range, hands)
+    this.pending = new Set(this.target?.notes.filter((n) => hands[n.hand]).map((n) => n.midi))
   }
 
   private applyRange() {
@@ -199,8 +222,7 @@ export class Engine {
 
   private frame = () => {
     const pos = this.position()
-    const { waitMode, waiting, hands } = usePlayer.getState()
-    if (pos < this.cleared) this.cleared = -Infinity // volvió al inicio del loop
+    const { waitMode, waiting } = usePlayer.getState()
 
     if (pos >= this.range.end) {
       this.pause()
@@ -208,12 +230,10 @@ export class Engine {
       return
     }
 
-    if (waitMode && !waiting) {
-      const chord = dueChord(this.chords, this.cleared, pos, this.range.start, hands)
-      if (chord) {
+    if (waitMode) {
+      this.aimNextChord()
+      if (this.target && !waiting && pos >= this.target.time) {
         this.transport.pause()
-        this.cleared = chord.time
-        this.pending = new Set(chord.notes.filter((n) => hands[n.hand]).map((n) => n.midi))
         usePlayer.setState({ waiting: true })
       }
     }

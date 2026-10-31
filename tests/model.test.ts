@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { odeToJoy, odeToJoySections } from '../src/data/odeToJoy'
 import { parseMidiMessage } from '../src/eval/midiInput'
 import { buildLayout, fitRange, parseNote, PIANO_HIGH, PIANO_LOW } from '../src/model/notes'
-import { dueChord, groupChords, measureAt, scoreEnd, sectionRange } from '../src/model/score'
+import { groupChords, measureAt, nextChord, scoreEnd, sectionRange } from '../src/model/score'
 
 const beat = 60 / odeToJoy.bpm
 const both = { L: true, R: true }
@@ -47,17 +47,19 @@ describe('partitura', () => {
 
 describe('modo espera', () => {
   const chords = groupChords(odeToJoy.notes)
+  const all = sectionRange(odeToJoy, null)
 
-  it('devuelve el primer acorde alcanzado sin resolver', () => {
-    expect(dueChord(chords, -Infinity, -1, 0, both)).toBeNull()
-    expect(dueChord(chords, -Infinity, 0.01, 0, both)?.time).toBe(0)
-    expect(dueChord(chords, 0, beat, 0, both)?.time).toBeCloseTo(beat)
+  it('devuelve el acorde siguiente al último resuelto', () => {
+    expect(nextChord(chords, -Infinity, all, both)?.time).toBe(0)
+    expect(nextChord(chords, 0, all, both)?.time).toBeCloseTo(beat)
   })
 
-  it('ignora acordes de la mano apagada y anteriores a la sección', () => {
+  it('ignora la mano apagada y lo que queda fuera de la sección', () => {
     const onlyLeft = { L: true, R: false }
-    expect(dueChord(chords, 0, beat * 2, 0, onlyLeft)).toBeNull()
-    expect(dueChord(chords, -Infinity, beat * 16, beat * 16, both)?.time).toBeCloseTo(beat * 16)
+    expect(nextChord(chords, 0, all, onlyLeft)?.time).toBeCloseTo(beat * 4)
+    const frase2 = sectionRange(odeToJoy, odeToJoySections[1])
+    expect(nextChord(chords, -Infinity, frase2, both)?.time).toBeCloseTo(beat * 16)
+    expect(nextChord(chords, frase2.end - 0.01, frase2, both)).toBeNull()
   })
 })
 
