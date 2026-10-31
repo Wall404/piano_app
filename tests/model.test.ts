@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { odeToJoy, odeToJoySections } from '../src/data/odeToJoy'
+import { odeToJoy } from '../src/data/odeToJoy'
 import { parseMidiMessage } from '../src/eval/midiInput'
 import { buildLayout, fitRange, parseNote, PIANO_HIGH, PIANO_LOW } from '../src/model/notes'
-import { groupChords, measureAt, nextChord, scoreEnd, sectionRange } from '../src/model/score'
+import { groupChords, measureAt, measureChunks, nextChord, scoreEnd, timeRange } from '../src/model/score'
 
 const beat = 60 / odeToJoy.bpm
 const both = { L: true, R: true }
@@ -33,8 +33,13 @@ describe('partitura', () => {
     expect(measureAt(odeToJoy, 8 * beat)).toBe(3)
   })
 
+  it('divide la obra en tramos de cuatro compases', () => {
+    expect(measureChunks(odeToJoy)).toHaveLength(4)
+    expect(measureChunks(odeToJoy)[1]).toEqual({ from: 5, to: 8 })
+  })
+
   it('calcula el rango de una sección por compases', () => {
-    const range = sectionRange(odeToJoy, odeToJoySections[1])
+    const range = timeRange(odeToJoy, { from: 5, to: 8 })
     expect(range.start).toBeCloseTo(16 * beat)
     expect(range.end).toBeCloseTo(32 * beat)
   })
@@ -47,7 +52,7 @@ describe('partitura', () => {
 
 describe('modo espera', () => {
   const chords = groupChords(odeToJoy.notes)
-  const all = sectionRange(odeToJoy, null)
+  const all = timeRange(odeToJoy, null)
 
   it('devuelve el acorde siguiente al último resuelto', () => {
     expect(nextChord(chords, -Infinity, all, both)?.time).toBe(0)
@@ -57,7 +62,7 @@ describe('modo espera', () => {
   it('ignora la mano apagada y lo que queda fuera de la sección', () => {
     const onlyLeft = { L: true, R: false }
     expect(nextChord(chords, 0, all, onlyLeft)?.time).toBeCloseTo(beat * 4)
-    const frase2 = sectionRange(odeToJoy, odeToJoySections[1])
+    const frase2 = timeRange(odeToJoy, { from: 5, to: 8 })
     expect(nextChord(chords, -Infinity, frase2, both)?.time).toBeCloseTo(beat * 16)
     expect(nextChord(chords, frase2.end - 0.01, frase2, both)).toBeNull()
   })

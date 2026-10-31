@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import type { Engine } from '../engine/transport'
-import { scoreEnd } from '../model/score'
-import type { Score, Section } from '../model/types'
+import { measureChunks, scoreEnd } from '../model/score'
+import type { Score } from '../model/types'
 import { usePlayer } from '../store/usePlayer'
 
 const Svg = ({ children }: { children: ReactNode }) => (
@@ -21,18 +21,20 @@ const RESTART = <path d="M12 5V2L7 6.5 12 11V7.5a5 5 0 1 1-5 5H4.5A7.5 7.5 0 1 0
 
 interface Props {
   score: Score
-  sections: Section[]
+  hasSheet: boolean
   engine: Engine
 }
 
-export default function TransportBar({ score, sections, engine }: Props) {
+export default function TransportBar({ score, hasSheet, engine }: Props) {
   const progressRef = useRef<HTMLInputElement>(null)
   const playing = usePlayer((s) => s.playing)
   const loadingAudio = usePlayer((s) => s.loadingAudio)
   const tempoPct = usePlayer((s) => s.tempoPct)
-  const sectionId = usePlayer((s) => s.sectionId)
+  const range = usePlayer((s) => s.range)
   const repeat = usePlayer((s) => s.repeat)
   const sound = usePlayer((s) => s.sound)
+  const metronome = usePlayer((s) => s.metronome)
+  const view = usePlayer((s) => s.view)
   const hands = usePlayer((s) => s.hands)
   const waitMode = usePlayer((s) => s.waitMode)
   const allKeys = usePlayer((s) => s.allKeys)
@@ -48,6 +50,13 @@ export default function TransportBar({ score, sections, engine }: Props) {
   )
 
   const midiConnected = Boolean(midiDevices?.length)
+  const count = score.measures.length
+  const setBound = (key: 'from' | 'to', value: number) => {
+    const next = { from: 1, to: count, ...range, [key]: Math.min(count, Math.max(1, value || 1)) }
+    if (key === 'from') next.to = Math.max(next.to, next.from)
+    else next.from = Math.min(next.from, next.to)
+    engine.setRange(next)
+  }
 
   return (
     <div className="transport">
@@ -93,13 +102,18 @@ export default function TransportBar({ score, sections, engine }: Props) {
       </div>
 
       <div className="chips" aria-label="Secciones">
-        <button className={`chip ${sectionId === null ? 'sel' : ''}`} onClick={() => engine.setSection(null)}>
+        <button className={`chip ${range === null ? 'sel' : ''}`} onClick={() => engine.setRange(null)}>
           Todo
         </button>
-        {sections.map((s) => (
-          <button key={s.id} className={`chip ${sectionId === s.id ? 'sel' : ''}`} onClick={() => engine.setSection(s.id)}>
-            {s.name}
-            <small>{s.fromMeasure}–{s.toMeasure}</small>
+        <label className="chip range">
+          Compases
+          <input type="number" min={1} max={count} value={range?.from ?? 1} onChange={(e) => setBound('from', e.target.valueAsNumber)} aria-label="Desde el compás" />
+          a
+          <input type="number" min={1} max={count} value={range?.to ?? count} onChange={(e) => setBound('to', e.target.valueAsNumber)} aria-label="Hasta el compás" />
+        </label>
+        {measureChunks(score).map((c) => (
+          <button key={c.from} className={`chip ${range?.from === c.from && range.to === c.to ? 'sel' : ''}`} onClick={() => engine.setRange(c)}>
+            {c.from}–{c.to}
           </button>
         ))}
       </div>
@@ -109,8 +123,12 @@ export default function TransportBar({ score, sections, engine }: Props) {
         <Toggle on={hands.R} onClick={() => engine.setHands({ ...hands, R: !hands.R })} className="R">Mano der.</Toggle>
         <Toggle on={repeat} onClick={() => engine.setRepeat(!repeat)}>Repetir</Toggle>
         <Toggle on={sound} onClick={() => usePlayer.setState({ sound: !sound })}>Sonido</Toggle>
+        <Toggle on={metronome} onClick={() => usePlayer.setState({ metronome: !metronome })}>Metrónomo</Toggle>
         <Toggle on={allKeys} onClick={() => usePlayer.setState({ allKeys: !allKeys })}>88 teclas</Toggle>
         <Toggle on={waitMode} disabled={!midiConnected} onClick={() => engine.setWaitMode(!waitMode)}>Modo espera</Toggle>
+        {hasSheet && (
+          <Toggle on={view === 'score'} onClick={() => usePlayer.setState({ view: view === 'score' ? 'falls' : 'score' })}>Partitura</Toggle>
+        )}
       </div>
 
       <button className={`midi-btn ${midiConnected ? 'on' : ''}`} onClick={() => void engine.connectMidi()}>

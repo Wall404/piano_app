@@ -1,21 +1,21 @@
 import { memo, useEffect, useMemo, useRef } from 'react'
 import { solfeo, type Layout } from '../model/notes'
-import { sectionRange } from '../model/score'
-import type { Score, Section } from '../model/types'
+import { timeRange } from '../model/score'
+import type { MeasureRange, Score } from '../model/types'
 import { usePlayer } from '../store/usePlayer'
 import { useSize } from './useSize'
 
 const VISIBLE_BEATS = 7
 
 // ponytail: una div por nota alcanza para piezas cortas; canvas cuando haya partituras largas (fase 3).
-function Waterfall({ score, layout, section }: { score: Score; layout: Layout; section: Section | null }) {
+function Waterfall({ score, layout, range }: { score: Score; layout: Layout; range: MeasureRange | null }) {
   const [wrapRef, { height }] = useSize<HTMLDivElement>()
   const innerRef = useRef<HTMLDivElement>(null)
   const activeIds = usePlayer((s) => s.activeIds)
   const hands = usePlayer((s) => s.hands)
 
   const pps = Math.max(1, (height / VISIBLE_BEATS) * (score.bpm / 60))
-  const band = useMemo(() => (section ? sectionRange(score, section) : null), [score, section])
+  const band = useMemo(() => (range ? timeRange(score, range) : null), [score, range])
 
   // La posición va directo al DOM para no re-renderizar en cada frame.
   useEffect(() => {

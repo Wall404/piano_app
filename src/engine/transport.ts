@@ -1,13 +1,16 @@
 import * as Tone from 'tone'
+import { match, type Played } from '../eval/match'
 import { connectMidi, type MidiNote } from '../eval/midiInput'
-import { groupChords, measureAt, nextChord, sectionRange, type Chord } from '../model/score'
-import type { Hand, NoteEvent, Score, Section } from '../model/types'
-import { usePlayer } from '../store/usePlayer'
+import { groupChords, measureAt, nextChord, timeRange, type Chord } from '../model/score'
+import type { Hand, MeasureRange, NoteEvent, Score } from '../model/types'
+import { saveAttempt } from '../storage/db'
+import { initialState, usePlayer } from '../store/usePlayer'
 
-const LEAD_BEATS = 2
 const SOON_BEATS = 0.75
 // La tecla se suelta un poco antes del final para que se vea la repetición de notas iguales.
 const HOLD_RATIO = 0.88
+// Cuánto puede separarse una nota de su tiempo, en segundos reales, para contar como acertada.
+const TOLERANCE_SEC = 0.2
 
 // ponytail: muestras desde el CDN de Tone.js; pasan a public/samples/piano con la PWA (fase 3).
 const SAMPLES_URL = 'https://tonejs.github.io/audio/salamander/'
@@ -27,36 +30,91 @@ interface Voice {
   triggerAttackRelease(note: string, duration: number, time?: number, velocity?: number): unknown
 }
 
+// El audio se comparte entre partituras: las muestras se cargan una sola vez.
+let voice: Voice | null = null
+let click: Tone.Synth | null = null
+let loading: Promise<void> | null = null
+
+/** Debe llamarse desde un gesto del usuario, por la regla de audio de los navegadores. */
+function ready() {
+  return (loading ??= (async () => {
+    usePlayer.setState({ loadingAudio: true })
+    await Tone.start()
+    click = new Tone.Synth({
+      oscillator: { type: 'square' },
+      envelope: { attack: 0.001, decay: 0.04, sustain: 0, release: 0.01 },
+      volume: -14,
+    }).toDestination()
+    await new Promise<void>((resolve) => {
+      voice = new Tone.Sampler({
+        urls: sampleUrls(),
+        baseUrl: SAMPLES_URL,
+        release: 1,
+        onload: resolve,
+        onerror: () => {
+          // Sin red para las muestras, mejor un sonido simple que ninguno.
+          voice = new Tone.PolySynth(Tone.Synth).toDestination() as unknown as Voice
+          resolve()
+        },
+      }).toDestination() as unknown as Voice
+    })
+    usePlayer.setState({ loadingAudio: false })
+  })())
+}
+
 /** Único reloj de la app: toca la partitura y publica en el store qué notas están activas. */
 export class Engine {
   private transport = Tone.getTransport()
   private leadSec: number
   private range: { start: number; end: number }
   private chords: Chord[]
-  private voice: Voice | null = null
-  private loading: Promise<void> | null = null
+  private part: Tone.Part<{ time: string; note: NoteEvent }>
   private raf = 0
   private cleared = -Infinity // último acorde resuelto en el modo espera
   private target: Chord | null = null
   private pending = new Set<number>() // notas del acorde que faltan
   private sig = ''
+  private takes: Played[] = [] // lo tocado en esta pasada
 
-  constructor(
-    private score: Score,
-    private sections: Section[],
-  ) {
-    this.leadSec = (LEAD_BEATS * 60) / score.bpm
-    this.range = sectionRange(score, null)
+  constructor(private score: Score) {
+    const [beats, unit] = score.timeSignature
+    this.leadSec = ((beats * 4) / unit) * (60 / score.bpm) // cuenta previa de un compás
+    this.range = timeRange(score, null)
     this.chords = groupChords(score.notes)
     this.transport.bpm.value = score.bpm
-    this.transport.on('loop', () => {
-      this.cleared = -Infinity
-      this.target = null
-    })
+    this.transport.on('loop', this.onLoop)
 
     const events = score.notes.map((note) => ({ time: this.tickTime(note.time), note }))
-    new Tone.Part<{ time: string; note: NoteEvent }>((time, e) => this.sound(time, e.note), events).start(0)
+    this.part = new Tone.Part<{ time: string; note: NoteEvent }>((time, e) => this.sound(time, e.note), events).start(0)
+    const beatTicks = Math.round((this.transport.PPQ * 4) / unit)
+    this.transport.scheduleRepeat(
+      (time) => {
+        if (usePlayer.getState().metronome) click?.triggerAttackRelease('C6', 0.03, time)
+      },
+      `${beatTicks}i`,
+      0,
+    )
+
+    const { midiDevices } = usePlayer.getState()
+    usePlayer.setState({ ...initialState, midiDevices })
+    if (midiDevices) void this.connectMidi() // reconecta las entradas a este motor
     this.publish(this.position())
+  }
+
+  dispose() {
+    cancelAnimationFrame(this.raf)
+    this.transport.stop()
+    this.transport.cancel()
+    this.transport.loop = false
+    this.transport.off('loop', this.onLoop)
+    this.part.dispose()
+    this.transport.ticks = 0
+  }
+
+  private onLoop = () => {
+    this.evaluate()
+    this.cleared = -Infinity
+    this.target = null
   }
 
   private secToTicks(sec: number) {
@@ -77,34 +135,12 @@ export class Engine {
     if (!sound || waitMode || !hands[n.hand]) return
     if (n.time < this.range.start || n.time >= this.range.end) return
     const name = Tone.Frequency(n.midi, 'midi').toNote()
-    this.voice?.triggerAttackRelease(name, (n.duration * 100) / tempoPct, time, n.hand === 'L' ? 0.55 : 0.8)
-  }
-
-  /** Debe llamarse desde un gesto del usuario, por la regla de audio de los navegadores. */
-  private ready() {
-    return (this.loading ??= (async () => {
-      usePlayer.setState({ loadingAudio: true })
-      await Tone.start()
-      await new Promise<void>((resolve) => {
-        this.voice = new Tone.Sampler({
-          urls: sampleUrls(),
-          baseUrl: SAMPLES_URL,
-          release: 1,
-          onload: resolve,
-          onerror: () => {
-            // Sin red para las muestras, mejor un sonido simple que ninguno.
-            this.voice = new Tone.PolySynth(Tone.Synth).toDestination() as unknown as Voice
-            resolve()
-          },
-        }).toDestination() as unknown as Voice
-      })
-      usePlayer.setState({ loadingAudio: false })
-    })())
+    voice?.triggerAttackRelease(name, (n.duration * 100) / tempoPct, time, n.hand === 'L' ? 0.55 : 0.8)
   }
 
   async toggle() {
     if (usePlayer.getState().playing) return this.pause()
-    await this.ready()
+    await ready()
     if (this.position() >= this.range.end) this.restart()
     this.transport.start()
     usePlayer.setState({ playing: true })
@@ -127,6 +163,7 @@ export class Engine {
     this.transport.ticks = this.secToTicks(Math.max(sec, -this.leadSec))
     this.cleared = sec
     this.target = null
+    this.takes = []
     this.publish(sec)
   }
 
@@ -135,8 +172,8 @@ export class Engine {
     usePlayer.setState({ tempoPct })
   }
 
-  setSection(sectionId: string | null) {
-    usePlayer.setState({ sectionId })
+  setRange(range: MeasureRange | null) {
+    usePlayer.setState({ range })
     this.applyRange()
   }
 
@@ -160,9 +197,9 @@ export class Engine {
   }
 
   strike(midi: number) {
-    void this.ready().then(() => {
+    void ready().then(() => {
       if (usePlayer.getState().sound) {
-        this.voice?.triggerAttackRelease(Tone.Frequency(midi, 'midi').toNote(), 0.5)
+        voice?.triggerAttackRelease(Tone.Frequency(midi, 'midi').toNote(), 0.5)
       }
     })
   }
@@ -182,7 +219,9 @@ export class Engine {
     usePlayer.setState({ played })
 
     const { waitMode, playing } = usePlayer.getState()
-    if (!on || !waitMode || !playing) return
+    if (!on || !playing) return
+    this.takes.push({ midi, time: this.position() })
+    if (!waitMode) return
     this.aimNextChord()
     if (!this.target) return
     this.pending.delete(midi)
@@ -208,11 +247,10 @@ export class Engine {
   }
 
   private applyRange() {
-    const { sectionId, repeat } = usePlayer.getState()
-    const section = this.sections.find((s) => s.id === sectionId) ?? null
-    this.range = sectionRange(this.score, section)
+    const { range, repeat } = usePlayer.getState()
+    this.range = timeRange(this.score, range)
     this.transport.loop = false
-    if (section && repeat) {
+    if (range && repeat) {
       this.transport.setLoopPoints(this.tickTime(this.range.start), this.tickTime(this.range.end))
       this.transport.loop = true
     }
@@ -225,6 +263,7 @@ export class Engine {
     const { waitMode, waiting } = usePlayer.getState()
 
     if (pos >= this.range.end) {
+      this.evaluate()
       this.pause()
       this.seek(this.range.end)
       return
@@ -240,6 +279,21 @@ export class Engine {
 
     this.publish(pos)
     this.raf = requestAnimationFrame(this.frame)
+  }
+
+  private evaluate() {
+    if (this.takes.length === 0) return
+    const { hands, waitMode, tempoPct } = usePlayer.getState()
+    const expected = this.score.notes.filter(
+      (n) => hands[n.hand] && n.time >= this.range.start && n.time < this.range.end,
+    )
+    if (expected.length === 0) return
+    // En modo espera marca el ritmo quien toca: solo importa qué notas.
+    const tolerance = waitMode ? Infinity : (TOLERANCE_SEC * tempoPct) / 100
+    const result = match(expected, this.takes, tolerance)
+    this.takes = []
+    usePlayer.setState({ result })
+    void saveAttempt(this.score.id, { date: new Date().toISOString(), tempoPct, result })
   }
 
   private publish(position: number) {

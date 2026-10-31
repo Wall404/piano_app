@@ -1,5 +1,4 @@
 import { fromTokens } from '../model/score'
-import type { Section } from '../model/types'
 
 // Beethoven, Novena Sinfonía (dominio público), arreglo simple en Do mayor.
 const C = 'C3+E3+G3'
@@ -28,14 +27,3 @@ export const odeToJoy = fromTokens({
     `${C}:4`, `${G}:4`, `${C}:4`, `${G}:2`, `${C}:2`,
   ],
 })
-
-const section = (id: string, name: string, fromMeasure: number, toMeasure: number): Section => ({
-  id, scoreId: odeToJoy.id, name, fromMeasure, toMeasure,
-})
-
-export const odeToJoySections: Section[] = [
-  section('a1', 'Frase 1', 1, 4),
-  section('a2', 'Frase 2', 5, 8),
-  section('b', 'Puente', 9, 12),
-  section('a3', 'Final', 13, 16),
-]
