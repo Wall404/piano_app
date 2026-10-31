@@ -22,6 +22,8 @@ export interface PlayerState {
   played: Set<number> // notas apretadas en el teclado MIDI
   midiDevices: string[] | null // null: sin conectar
   midiError: string | null
+  mic: 'off' | 'calibrating' | 'on'
+  micSensitivityDb: number
   result: Result | null // devolución de la última pasada
   view: 'falls' | 'score'
 }
@@ -46,6 +48,8 @@ export const initialState: PlayerState = {
   played: new Set(),
   midiDevices: null,
   midiError: null,
+  mic: 'off',
+  micSensitivityDb: 22,
   result: null,
   view: 'falls',
 }

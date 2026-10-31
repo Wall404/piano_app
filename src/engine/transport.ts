@@ -1,6 +1,8 @@
 import * as Tone from 'tone'
 import { match, type Played } from '../eval/match'
+import { startMic } from '../eval/mic'
 import { connectMidi, type MidiNote } from '../eval/midiInput'
+import { fitRange } from '../model/notes'
 import { groupChords, measureAt, nextChord, timeRange, type Chord } from '../model/score'
 import type { Hand, MeasureRange, NoteEvent, Score } from '../model/types'
 import { saveAttempt } from '../storage/db'
@@ -11,6 +13,8 @@ const SOON_BEATS = 0.75
 const HOLD_RATIO = 0.88
 // Cuánto puede separarse una nota de su tiempo, en segundos reales, para contar como acertada.
 const TOLERANCE_SEC = 0.2
+// Demora del micrófono hasta detectar el ataque; se descuenta al juzgar el ritmo.
+const MIC_LATENCY_SEC = 0.22
 
 // ponytail: muestras desde el CDN de Tone.js; pasan a public/samples/piano con la PWA (fase 3).
 const SAMPLES_URL = 'https://tonejs.github.io/audio/salamander/'
@@ -75,6 +79,8 @@ export class Engine {
   private pending = new Set<number>() // notas del acorde que faltan
   private sig = ''
   private takes: Played[] = [] // lo tocado en esta pasada
+  private inputLatencySec = 0
+  private stopMic: (() => void) | null = null
 
   constructor(private score: Score) {
     const [beats, unit] = score.timeSignature
@@ -95,13 +101,15 @@ export class Engine {
       0,
     )
 
-    const { midiDevices } = usePlayer.getState()
-    usePlayer.setState({ ...initialState, midiDevices })
+    const { midiDevices, mic, micSensitivityDb } = usePlayer.getState()
+    usePlayer.setState({ ...initialState, midiDevices, micSensitivityDb })
     if (midiDevices) void this.connectMidi() // reconecta las entradas a este motor
+    if (mic !== 'off') void this.connectMic()
     this.publish(this.position())
   }
 
   dispose() {
+    this.stopMic?.()
     cancelAnimationFrame(this.raf)
     this.transport.stop()
     this.transport.cancel()
@@ -212,6 +220,41 @@ export class Engine {
     }
   }
 
+  async toggleMic() {
+    if (usePlayer.getState().mic === 'off') return this.connectMic()
+    this.stopMic?.()
+    this.stopMic = null
+    this.inputLatencySec = 0
+    usePlayer.setState({ mic: 'off' })
+  }
+
+  private async connectMic() {
+    const midis = this.score.notes.map((n) => n.midi)
+    const [low, high] = fitRange(Math.min(...midis), Math.max(...midis))
+    // El micrófono escucharía a la propia app.
+    usePlayer.setState({ mic: 'calibrating', sound: false, metronome: false, midiError: null })
+    try {
+      this.stopMic = await startMic({
+        low,
+        high,
+        onNote: this.onMidi,
+        expected: () => {
+          const { active, soon } = usePlayer.getState()
+          return new Set([...active.keys(), ...soon, ...this.pending])
+        },
+        sensitivityDb: () => usePlayer.getState().micSensitivityDb,
+        onReady: () => usePlayer.setState({ mic: 'on' }),
+      })
+      this.inputLatencySec = MIC_LATENCY_SEC
+    } catch (err) {
+      const denied = err instanceof DOMException && err.name === 'NotAllowedError'
+      usePlayer.setState({
+        mic: 'off',
+        midiError: denied ? 'Permití el micrófono en el navegador para que la app te escuche.' : err instanceof Error ? err.message : 'No se pudo abrir el micrófono.',
+      })
+    }
+  }
+
   private onMidi = ({ midi, on }: MidiNote) => {
     const played = new Set(usePlayer.getState().played)
     if (on) played.add(midi)
@@ -220,12 +263,14 @@ export class Engine {
 
     const { waitMode, playing } = usePlayer.getState()
     if (!on || !playing) return
-    this.takes.push({ midi, time: this.position() })
+    this.takes.push({ midi, time: this.position() - this.inputLatencySec * (usePlayer.getState().tempoPct / 100) })
     if (!waitMode) return
     this.aimNextChord()
     if (!this.target) return
     this.pending.delete(midi)
-    if (this.pending.size > 0) return
+    // ponytail: el micrófono pierde notas internas de acordes; hasta un tercio pueden faltar. Mejorar con Basic Pitch.
+    const allowedMissing = this.inputLatencySec > 0 ? Math.floor(this.target.notes.length / 3) : 0
+    if (this.pending.size > allowedMissing) return
 
     // Acorde completo: si se tocó antes de tiempo, el reloj salta hasta él.
     const { time } = this.target

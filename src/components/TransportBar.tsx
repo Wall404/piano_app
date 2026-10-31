@@ -40,6 +40,8 @@ export default function TransportBar({ score, hasSheet, engine }: Props) {
   const allKeys = usePlayer((s) => s.allKeys)
   const midiDevices = usePlayer((s) => s.midiDevices)
   const midiError = usePlayer((s) => s.midiError)
+  const mic = usePlayer((s) => s.mic)
+  const micSensitivityDb = usePlayer((s) => s.micSensitivityDb)
 
   useEffect(
     () =>
@@ -50,6 +52,7 @@ export default function TransportBar({ score, hasSheet, engine }: Props) {
   )
 
   const midiConnected = Boolean(midiDevices?.length)
+  const listening = midiConnected || mic === 'on'
   const count = score.measures.length
   const setBound = (key: 'from' | 'to', value: number) => {
     const next = { from: 1, to: count, ...range, [key]: Math.min(count, Math.max(1, value || 1)) }
@@ -125,15 +128,33 @@ export default function TransportBar({ score, hasSheet, engine }: Props) {
         <Toggle on={sound} onClick={() => usePlayer.setState({ sound: !sound })}>Sonido</Toggle>
         <Toggle on={metronome} onClick={() => usePlayer.setState({ metronome: !metronome })}>Metrónomo</Toggle>
         <Toggle on={allKeys} onClick={() => usePlayer.setState({ allKeys: !allKeys })}>88 teclas</Toggle>
-        <Toggle on={waitMode} disabled={!midiConnected} onClick={() => engine.setWaitMode(!waitMode)}>Modo espera</Toggle>
+        <Toggle on={waitMode} disabled={!listening} onClick={() => engine.setWaitMode(!waitMode)}>Modo espera</Toggle>
         {hasSheet && (
           <Toggle on={view === 'score'} onClick={() => usePlayer.setState({ view: view === 'score' ? 'falls' : 'score' })}>Partitura</Toggle>
         )}
       </div>
 
+      <button className={`midi-btn ${mic === 'on' ? 'on' : ''}`} onClick={() => void engine.toggleMic()}>
+        <span className="dot" />
+        {mic === 'off' ? 'Escuchar con el micrófono' : mic === 'calibrating' ? 'Midiendo el ruido: hacé silencio…' : 'Escuchando: tocá para apagar'}
+      </button>
+      {mic === 'on' && (
+        <label className="tempo sensitivity">
+          <small>Sensibilidad</small>
+          <input
+            type="range"
+            min={10}
+            max={40}
+            step={1}
+            value={50 - micSensitivityDb}
+            onChange={(e) => usePlayer.setState({ micSensitivityDb: 50 - Number(e.target.value) })}
+            aria-label="Sensibilidad del micrófono"
+          />
+        </label>
+      )}
       <button className={`midi-btn ${midiConnected ? 'on' : ''}`} onClick={() => void engine.connectMidi()}>
         <span className="dot" />
-        {midiConnected ? midiDevices!.join(', ') : midiDevices ? 'Sin teclado: conectá el Casio por USB' : 'Conectar teclado MIDI'}
+        {midiConnected ? midiDevices!.join(', ') : midiDevices ? 'Sin teclado: conectá el Casio por USB' : 'Conectar teclado MIDI por USB'}
       </button>
       {midiError && <p className="midi-error" role="alert">{midiError}</p>}
     </div>
