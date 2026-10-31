@@ -14,11 +14,11 @@ Tres resultados definen el éxito de la v1:
 
 1. Cargar un MusicXML o MIDI propio y verlo en el teclado en menos de 5 segundos.
 2. Elegir un rango de compases, bajar el tempo y repetirlo en loop.
-3. Que la app escuche al usuario y marque qué notas acertó (fase avanzada).
+3. Que la app escuche al usuario y marque qué notas acertó, usando el micrófono del celular (fase 3).
 
 ## Requisitos funcionales
 
-La v1 cubre los módulos 1 a 3; el módulo 4 (micrófono) es una fase aparte porque es la parte con más riesgo técnico.
+La v1 cubre los cuatro módulos. El 4 (micrófono) es el de más riesgo técnico, por eso arranca con la calibración y con notas sueltas.
 
 ### 1. Carga de partituras
 
@@ -44,17 +44,17 @@ La v1 cubre los módulos 1 a 3; el módulo 4 (micrófono) es una fase aparte por
 - Tempo de 25 % a 150 % del original, en pasos de 5 %, sin cambiar la afinación.
 - Metrónomo con cuenta previa de 1 compás.
 - Manos separadas: tocar o mostrar solo derecha, solo izquierda, o ambas.
-- Modo "espera": la reproducción se detiene en cada acorde hasta que el usuario toca la nota correcta (con teclado MIDI en v1, con micrófono en fase 4).
+- Modo "espera": la reproducción se detiene en cada acorde hasta que el usuario toca la nota correcta (escuchando con el micrófono del celular; con teclado MIDI si se conecta).
 - Subida de tempo automática opcional: +5 % cada N loops sin errores.
 
-### 4. Evaluación por micrófono (fase avanzada)
+### 4. Evaluación por micrófono (fase 3)
 
 - Antes de evaluar por primera vez, la app pide permiso de micrófono y corre la calibración inicial (ver 4.1).
 - Durante la práctica, detectar las notas que suenan y compararlas con las esperadas en una ventana de tiempo.
 - Devolución en vivo: tecla verde si acertó, roja si fue otra nota, gris si faltó.
 - Devolución al terminar: % de notas correctas, % a tiempo, compases con más errores y sugerencia ("repetir compases 9 a 12 al 70 %").
 - Historial de sesiones por partitura para ver el progreso.
-- Camino principal: el Casio CDP-S110 conectado por USB (cable OTG en Android) manda las notas por Web MIDI, exactas y sin depender del audio, al mismo motor de evaluación. El micrófono queda para pianos acústicos o cuando no hay cable.
+- Camino principal: el micrófono del celular escucha los parlantes del Casio CDP-S110. Opcional: con un cable USB OTG el Casio manda las notas por Web MIDI, exactas, al mismo motor de evaluación.
 
 ### 4.1 Calibración inicial (tuning)
 
@@ -113,7 +113,7 @@ React + TypeScript + Vite en el front, Tone.js para sonido y tiempo, OpenSheetMu
 | Cascada (opcional) | Canvas 2D | Muchas barras animadas a 60 fps rinden mejor en canvas que en DOM. El prototipo usa DOM y pasa a canvas en la fase 3. |
 | Persistencia | IndexedDB vía [idb-keyval](https://github.com/jakearchibald/idb-keyval) | Guardar archivos de partitura, secciones e historial con 2 funciones. |
 | PWA | [vite-plugin-pwa](https://vite-pwa-org.netlify.app) | Instalar en el teléfono y usar sin red. |
-| Entrada MIDI | Web MIDI API (nativa) | Teclado físico por USB/Bluetooth para el modo espera y la evaluación precisa. No funciona en Safari iOS. |
+| Entrada MIDI | Web MIDI API (nativa) | Opcional, con cable OTG: notas exactas para el modo espera y la evaluación. No funciona en Safari iOS. |
 | Micrófono, notas sueltas | [Pitchy](https://github.com/ianprime0509/pitchy) (McLeod) sobre `AnalyserNode` | Liviano, en tiempo real, suficiente para melodías de una nota. |
 | Micrófono, acordes | [Basic Pitch](https://github.com/spotify/basic-pitch) de Spotify (modelo TensorFlow.js, paquete `@spotify/basic-pitch`) | Transcripción polifónica audio a notas en el navegador. Procesa ventanas de 2 s a 22 050 Hz, así que se usa con algo de retraso, no nota a nota. |
 | Tests | [Vitest](https://vitest.dev) + Testing Library, Playwright para un flujo end-to-end | Mismo config que Vite. |
@@ -134,8 +134,8 @@ flowchart LR
   A -- se guarda --> D["Biblioteca local<br/>IndexedDB + historial"]
   C --> E["Motor de práctica<br/>Tone.js: tempo, loop, manos"]
   E -- notas activas --> F["Vistas<br/>teclado, cascada, partitura"]
-  E -- notas esperadas --> G["Evaluador (fase 4)<br/>esperado vs. tocado"]
-  H["Entrada (fase 4)<br/>micrófono o Web MIDI"] --> G
+  E -- notas esperadas --> G["Evaluador (fase 3)<br/>esperado vs. tocado"]
+  H["Entrada (fase 3)<br/>micrófono (MIDI opcional)"] --> G
   G -- acierto o error --> F
   G -- historial --> D
 ```
@@ -207,17 +207,17 @@ Tres pantallas: **Biblioteca** (lista y carga), **Práctica** (partitura, teclad
 
 ## Roadmap
 
-Cinco fases; al cerrar la fase 2 ya hay una app usable para practicar, y el micrófono llega al final porque es lo más incierto.
+Cinco fases; al cerrar la fase 2 ya hay una app usable para practicar, y la fase 3 suma el micrófono, que es lo más incierto.
 
 | Fase | Incluye | Terminado cuando |
 | --- | --- | --- |
 | 0 · Base | Vite + React + TS, CI y GitHub Pages, teclado SVG estático, tema visual | El teclado de 88 teclas se ve bien en el teléfono en horizontal |
 | 1 · Ver | PDF a MusicXML (Audiveris), carga, `Score`, teclado ilumina notas, sonido | Un ejemplo suena y se ilumina en sincronía (menos de 30 ms) |
 | **2 · Practicar** | Secciones, loop, tempo 25 a 150 %, metrónomo, manos, partitura | Loop de compases 5 a 8 al 50 % sin cortes ni desfase |
-| 3 · Pulir | Biblioteca, PWA, cascada, historial, Web MIDI: modo espera y evaluación | Se instala en el teléfono, anda sin red y evalúa con el Casio por USB |
-| 4 · Evaluar | Calibración y micrófono (Pitchy y Basic Pitch) para piano acústico | 90 % o más de notas bien detectadas en una pieza simple, piano real |
+| 3 · Escuchar | Calibración, micrófono (Pitchy), modo espera, devolución, historial | 90 % o más de notas sueltas detectadas con el celular frente al Casio |
+| 4 · Pulir | Acordes (Basic Pitch), biblioteca, PWA, cascada canvas, MIDI opcional | Se instala en el teléfono, anda sin red y detecta acordes de 3 notas |
 
-Con el Casio por USB, la evaluación exacta llega en la fase 3; el micrófono de la fase 4 pasa a ser un extra para pianos acústicos. Cada fase termina en un PR a `main` con la app funcionando. La fase 4 empieza con un prototipo aislado de detección (una página que muestra qué nota escucha) antes de integrarlo, para medir la precisión con el piano real.
+La evaluación por micrófono llega en la fase 3, empezando por la calibración; los acordes con Basic Pitch y el MIDI opcional quedan para la fase 4. Cada fase termina en un PR a `main` con la app funcionando. La fase 3 empieza con un prototipo aislado de detección (una página que muestra qué nota escucha) antes de integrarlo, para medir la precisión con el piano real.
 
 ## Riesgos y preguntas abiertas
 
@@ -225,16 +225,16 @@ El riesgo mayor es la detección de acordes por micrófono; el plan lo aísla en
 
 | Riesgo | Impacto | Mitigación |
 | --- | --- | --- |
-| Detectar acordes con el micrófono del teléfono es impreciso (armónicos, eco, ruido) | La devolución marca errores que no existen | Calibración inicial obligatoria (ver 4.1) que ajusta umbral, afinación y latencia al equipo real; empezar con melodías de una nota (Pitchy), sumar Basic Pitch para acordes con tolerancia amplia, y recomendar teclado MIDI para precisión |
+| Detectar acordes con el micrófono del teléfono es impreciso (armónicos, eco, ruido) | La devolución marca errores que no existen | Calibración inicial obligatoria (ver 4.1) que ajusta umbral, afinación y latencia al equipo real; empezar con melodías de una nota (Pitchy), sumar Basic Pitch para acordes con tolerancia amplia, y dejar el MIDI por cable OTG como alternativa exacta |
 | Basic Pitch analiza ventanas de 2 s | Feedback de acordes con retraso | Feedback en vivo solo para notas sueltas; acordes evaluados al final del loop |
-| El micrófono exige HTTPS fuera de `localhost` | No anda desde el teléfono en la red local | Certificado local con mkcert o deploy de prueba en GitHub Pages |
+| El micrófono exige HTTPS fuera de `localhost` | No anda desde el teléfono en la red local | GitHub Pages (repo público) ya da HTTPS; para desarrollo local, certificado con mkcert |
 | Web MIDI no existe en Safari iOS | Sin modo espera con MIDI en iPhone | No aplica por ahora: el dispositivo principal es Android |
 | El OMR de los PDF (Audiveris) comete errores: notas, ritmos o manos mal leídas | Notas o manos mal asignadas | Revisar la partitura renderizada antes de practicar y corregir en MuseScore; preferir PDF digitales a escaneos; tests con archivos reales en `tests/fixtures` |
 | Muestras de piano pesan varios MB | Primera carga lenta en el teléfono | Hoy salen del CDN de Tone.js; en la fase 3 se copian a `public/samples/piano/` (1 muestra cada 3 semitonos, el Sampler interpola) y se cachean con la PWA |
 
 Respuestas de Wally (30/10/2026):
 
-- [x] Teclado MIDI: piano digital Casio CDP-S110 (USB). La evaluación por MIDI pasa a la fase 3.
+- [x] Piano: Casio CDP-S110, sin cable OTG. La evaluación usa el micrófono del celular (fase 3); MIDI queda opcional.
 - [x] Partituras: en PDF. Se agrega la conversión con Audiveris en la fase 1.
 - [x] Teléfono: Android. Se prueba primero en Chrome Android.
 - [x] Repo: público. GitHub Pages como hosting con HTTPS desde la fase 0; las partituras propias no se suben.
