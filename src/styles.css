@@ -282,6 +282,9 @@ input[type='range']::-moz-range-thumb {
 /* Pantallas angostas: controles en dos filas de toggles. */
 @media (max-width: 420px) {
   .brand h1 { font-size: 1rem; }
+  .tempo-row { gap: 4px; }
+  .tempo-row .tempo-value { white-space: normal; line-height: 1.1; }
+  .tempo-value small { display: block; font-size: 0.7rem; }
 }
 
 /* Escritorio: teclado más alto y toggles en una fila. */
