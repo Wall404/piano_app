@@ -18,13 +18,14 @@ export default function Calibration({ onDone, onCancel }: { onDone: () => void; 
   const [profile, setProfile] = useState<CalibrationProfile | null>(null)
   const [error, setError] = useState<string | null>(null)
   const abort = useRef(new AbortController())
+  const skip = useRef({ requested: false })
 
   const start = async () => {
     setError(null)
     setStep({ index: 1, title: 'Preparando', detail: 'Abriendo el micrófono…' })
     try {
       await prepareAudio()
-      const result = await runCalibration(playClick, setStep, abort.current.signal)
+      const result = await runCalibration(playClick, setStep, abort.current.signal, skip.current)
       if (result) {
         await saveCalibration(result)
         setProfile(result)
@@ -52,6 +53,7 @@ export default function Calibration({ onDone, onCancel }: { onDone: () => void; 
             <h2>{step.title}</h2>
             <p>{step.detail}</p>
             <div className="calibration-bar"><span style={{ width: `${(step.index / STEP_COUNT) * 100}%` }} /></div>
+            {step.waiting && <button className="secondary" onClick={() => (skip.current.requested = true)}>No la detecta, saltear</button>}
             <button className="secondary" onClick={() => { abort.current.abort(); onCancel() }}>Cancelar</button>
           </>
         ) : (

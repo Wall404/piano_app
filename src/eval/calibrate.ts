@@ -14,11 +14,11 @@ export interface CalibrationStep {
   index: number
   title: string
   detail: string
+  waiting?: boolean // espera una nota: se puede saltear
 }
 
 export const STEP_COUNT = 5
 const SILENCE_MS = 3000
-const STEP_TIMEOUT_MS = 8000
 const SENSITIVITY_DB = 22
 const WEAK_REGISTER_GAIN_DB = 8 // un registro que no se oyó se escucha con umbral más bajo
 const CLICK_INTERVAL_SEC = 0.8
@@ -51,6 +51,7 @@ export async function runCalibration(
   playClick: (delaySec: number) => void,
   onStep: (step: CalibrationStep) => void,
   signal: AbortSignal,
+  skip: { requested: boolean } = { requested: false },
 ): Promise<CalibrationProfile | null> {
   let wanted = new Set<number>()
   const hits: { midi: number; at: number }[] = []
@@ -71,13 +72,13 @@ export async function runCalibration(
     onReady: () => ready(),
   })
 
-  /** Espera hasta oír todas las notas pedidas o agotar el tiempo. */
-  const listenFor = async (midis: number[], timeoutMs = STEP_TIMEOUT_MS) => {
+  /** Espera hasta oír todas las notas pedidas, o hasta que se saltee el paso. */
+  const listenFor = async (midis: number[]) => {
     wanted = new Set(midis)
     hits.length = 0
-    const end = performance.now() + timeoutMs
+    skip.requested = false
     const heard = () => midis.filter((m) => hits.some((h) => h.midi === m))
-    while (heard().length < midis.length && performance.now() < end && !signal.aborted) {
+    while (heard().length < midis.length && !skip.requested && !signal.aborted) {
       await new Promise<void>((resolve) => {
         notify = resolve
         setTimeout(resolve, 100)
@@ -90,7 +91,7 @@ export async function runCalibration(
     onStep({ index: 1, title: 'Silencio', detail: 'Hacé silencio unos segundos mientras mido el ruido de la sala.' })
     await noiseReady
 
-    onStep({ index: 2, title: 'Afinación', detail: 'Tocá La4 (el La arriba del Do central) y mantenelo apretado.' })
+    onStep({ index: 2, title: 'Afinación', detail: 'Tocá La4 (el La arriba del Do central) y mantenelo apretado.', waiting: true })
     let a4Hz = A4_HZ
     if ((await listenFor([69])).length > 0) {
       await sleep(250)
@@ -107,7 +108,7 @@ export async function runCalibration(
     const labels = { low: 'Do2, el grave', mid: 'Do4, el Do central', high: 'Do6, el agudo' }
     for (const key of ['low', 'mid', 'high'] as const) {
       if (signal.aborted) return null
-      onStep({ index: 3, title: 'Registros', detail: `Tocá ${labels[key]}, con fuerza normal.` })
+      onStep({ index: 3, title: 'Registros', detail: `Tocá ${labels[key]}, con fuerza normal.`, waiting: true })
       if ((await listenFor([registers[key]])).length === 0) registerGain[key] = WEAK_REGISTER_GAIN_DB
       await sleep(500)
     }
@@ -125,7 +126,7 @@ export async function runCalibration(
     const latencyMs = Math.round(Math.min(500, Math.max(50, measured ?? DEFAULT_LATENCY_MS)))
 
     if (signal.aborted) return null
-    onStep({ index: 5, title: 'Acorde', detail: 'Tocá juntas Do4, Mi4 y Sol4.' })
+    onStep({ index: 5, title: 'Acorde', detail: 'Tocá juntas Do4, Mi4 y Sol4.', waiting: true })
     const chord = await listenFor([60, 64, 67])
     if (signal.aborted) return null
 
