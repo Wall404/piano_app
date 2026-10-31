@@ -224,6 +224,8 @@ input[type='range']::-moz-range-thumb {
 .midi-btn.on .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 .midi-error { margin: 0; color: var(--bad); font-size: 0.8rem; }
 
+.sensitivity small { color: var(--text-dim); font-size: 0.8rem; }
+
 /* ---------- Biblioteca ---------- */
 .library { max-width: 720px; margin: 0 auto; padding: max(20px, env(safe-area-inset-top)) var(--gutter) 32px; display: grid; gap: 14px; }
 .library h2 { margin: 12px 0 0; font-size: 0.8rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; }
