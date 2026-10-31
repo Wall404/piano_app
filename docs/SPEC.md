@@ -28,6 +28,21 @@ La v1 cubre los cuatro módulos. El 4 (micrófono) es el de más riesgo técnico
 - Incluir 2 o 3 partituras de ejemplo de dominio público para probar sin tener archivos.
 - PDF (el formato que usa Wally): se convierte en la PC con Audiveris, un OMR open source, con `npm run pdf -- pieza.pdf`, que corre `audiveris -batch -transcribe -export -output scores/ pieza.pdf` y deja `pieza.mxl`. El reconocimiento comete errores, así que la app muestra la partitura renderizada para revisarla y, si hace falta, se corrige en MuseScore. Las partituras propias quedan fuera del repo (carpeta en `.gitignore`) porque el repo es público.
 
+### 1.1 PDF con varias obras (colecciones)
+
+Un PDF puede traer una sola obra o una colección (un cuaderno de estudios, un álbum). La app lo detecta y, si es una colección, lista cada obra por separado para elegirla. Entra en la fase 4; no cambia lo ya hecho.
+
+- **Detección automática:** Audiveris ya separa "movimientos" cuando el primer sistema de una obra está sangrado, y exporta un archivo por obra (`pieza.mvt1.mxl`, `pieza.mvt2.mxl`, …). Si sale más de un archivo, el script lo trata como colección.
+- **Nombres:** cada obra toma el título que Audiveris lee del encabezado (OCR); si no hay, queda como "Obra 3 (pág. 7)" y se puede renombrar.
+- **Interfaz:** en la Biblioteca la colección aparece como un grupo desplegable con sus obras en orden, cada una con su propio progreso, secciones e historial.
+- **Marcar a mano:** al subir el PDF hay una casilla "Es una colección". Si Audiveris no detectó cortes (pasa en antologías sin sangría), la app muestra las páginas en miniatura y el usuario marca dónde empieza cada obra. El script vuelve a correr Audiveris por rangos con `-sheets` (por ejemplo `-sheets 1-2`, `-sheets 3-5`) y obtiene una obra por rango.
+- **Corregir:** se puede unir dos obras que se cortaron mal, o separar una en dos, sin volver a subir el PDF.
+
+```ts
+interface Collection { id: string; title: string; pdfName: string; scoreIds: string[] } // en orden
+// Score suma: collectionId?: string; pages?: [number, number]
+```
+
 ### 2. Teclado visual y partitura
 
 - Teclado de 88 teclas dibujado en SVG, con zoom y desplazamiento al rango que usa la pieza (en mobile se muestran 2 a 3 octavas y sigue la música).
@@ -215,7 +230,7 @@ Cinco fases; al cerrar la fase 2 ya hay una app usable para practicar, y la fase
 | 1 · Ver | PDF a MusicXML (Audiveris), carga, `Score`, teclado ilumina notas, sonido | Un ejemplo suena y se ilumina en sincronía (menos de 30 ms) |
 | **2 · Practicar** | Secciones, loop, tempo 25 a 150 %, metrónomo, manos, partitura | Loop de compases 5 a 8 al 50 % sin cortes ni desfase |
 | 3 · Escuchar | Calibración, micrófono (Pitchy), modo espera, devolución, historial | 90 % o más de notas sueltas detectadas con el celular frente al Casio |
-| 4 · Pulir | Acordes (Basic Pitch), biblioteca, PWA, cascada canvas, MIDI opcional | Se instala en el teléfono, anda sin red y detecta acordes de 3 notas |
+| 4 · Pulir | Acordes (Basic Pitch), colecciones de PDF (1.1), biblioteca, PWA, cascada canvas, MIDI opcional | Se instala en el teléfono, anda sin red y detecta acordes de 3 notas |
 
 La evaluación por micrófono llega en la fase 3, empezando por la calibración; los acordes con Basic Pitch y el MIDI opcional quedan para la fase 4. Cada fase termina en un PR a `main` con la app funcionando. La fase 3 empieza con un prototipo aislado de detección (una página que muestra qué nota escucha) antes de integrarlo, para medir la precisión con el piano real.
 
