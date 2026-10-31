@@ -195,6 +195,7 @@ export default function TransportBar({ score, hasSheet, engine }: Props) {
               />
             </label>
           )}
+          <button className="midi-btn" onClick={() => engine.openCalibration()}>Calibrar micrófono</button>
           <button className={`midi-btn ${midiConnected ? 'on' : ''}`} onClick={() => void engine.connectMidi()}>
             <span className="dot" />
             {midiConnected ? midiDevices!.join(', ') : midiDevices ? 'Sin teclado: conectá el Casio por USB' : 'Conectar teclado MIDI por USB'}

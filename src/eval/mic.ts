@@ -1,3 +1,4 @@
+import { peakBin } from './peak'
 import type { MidiNote } from './midiInput'
 
 // Ventana larga para separar semitonos graves, corta para reaccionar rápido en el resto.
@@ -21,11 +22,11 @@ const PEAK_EXPECTED_DB = 1
 const midiToFreq = (midi: number) => 440 * 2 ** ((midi - 69) / 12)
 
 /** Nivel en dB de cada nota, leyendo el espectro alrededor de su fundamental. */
-export function noteLevels(spectrum: Float32Array, sampleRate: number, low: number, high: number): number[] {
+export function noteLevels(spectrum: Float32Array, sampleRate: number, low: number, high: number, centsOffset = 0): number[] {
   const binsPerHz = (spectrum.length * 2) / sampleRate
   const levels: number[] = []
   for (let midi = low; midi <= high; midi++) {
-    const center = midiToFreq(midi) * binsPerHz
+    const center = midiToFreq(midi) * 2 ** (centsOffset / 1200) * binsPerHz
     const reach = Math.floor((center * 0.0595) / 4) // un cuarto de semitono
     const bin = Math.round(center)
     let level = -Infinity
@@ -99,10 +100,26 @@ interface MicOptions {
   expected: () => Set<number>
   sensitivityDb: () => number // cuánto por encima del ruido cuenta como nota
   onReady: () => void
+  calibrationMs?: number
+  centsOffset?: number
+  registerGain?: { low: number; mid: number; high: number }
 }
 
-/** Escucha el micrófono. Devuelve la función que lo apaga. */
-export async function startMic({ low, high, onNote, expected, sensitivityDb, onReady }: MicOptions) {
+const REGISTER_LOW_BELOW = 48
+const REGISTER_HIGH_FROM = 72
+
+/** Escucha el micrófono. */
+export async function startMic({
+  low,
+  high,
+  onNote,
+  expected,
+  sensitivityDb,
+  onReady,
+  calibrationMs = CALIBRATION_MS,
+  centsOffset = 0,
+  registerGain = { low: 0, mid: 0, high: 0 },
+}: MicOptions) {
   if (!navigator.mediaDevices?.getUserMedia) throw new Error('El micrófono necesita HTTPS o localhost.')
   // Los filtros de voz del teléfono se comen las notas sostenidas.
   const stream = await navigator.mediaDevices.getUserMedia({
@@ -117,14 +134,17 @@ export async function startMic({ low, high, onNote, expected, sensitivityDb, onR
     analyser.smoothingTimeConstant = 0
     source.connect(analyser)
     const spectrum = new Float32Array(analyser.frequencyBinCount)
-    return (from: number, to: number) => {
+    const levels = (from: number, to: number) => {
       analyser.getFloatFrequencyData(spectrum)
-      return from <= to ? noteLevels(spectrum, ctx.sampleRate, from, to) : []
+      return from <= to ? noteLevels(spectrum, ctx.sampleRate, from, to, centsOffset) : []
     }
+    return { analyser, spectrum, levels }
   }
   const lows = listen(FFT_LOW)
   const highs = listen(FFT_HIGH)
-  const read = () => [...lows(low, Math.min(high, SPLIT_MIDI - 1)), ...highs(Math.max(low, SPLIT_MIDI), high)]
+  const read = () => [...lows.levels(low, Math.min(high, SPLIT_MIDI - 1)), ...highs.levels(Math.max(low, SPLIT_MIDI), high)]
+  const gainFor = (midi: number) =>
+    midi < REGISTER_LOW_BELOW ? registerGain.low : midi >= REGISTER_HIGH_FROM ? registerGain.high : registerGain.mid
 
   // Calibración: el máximo de cada nota en silencio es su piso de ruido.
   let noise: number[] | null = null
@@ -132,7 +152,7 @@ export async function startMic({ low, high, onNote, expected, sensitivityDb, onR
   const startedAt = performance.now()
   const timer = setInterval(() => {
     const levels = read()
-    if (performance.now() - startedAt < CALIBRATION_MS) {
+    if (performance.now() - startedAt < calibrationMs) {
       noise = noise ? noise.map((n, i) => Math.max(n, levels[i])) : levels
       return
     }
@@ -140,13 +160,22 @@ export async function startMic({ low, high, onNote, expected, sensitivityDb, onR
       detector.calibrated = true
       onReady()
     }
-    const threshold = noise!.map((n) => n + sensitivityDb())
+    const threshold = noise!.map((n, i) => n + sensitivityDb() - gainFor(low + i))
     detector.update(levels, threshold, expected()).forEach(onNote)
   }, TICK_MS)
 
-  return () => {
-    clearInterval(timer)
-    stream.getTracks().forEach((t) => t.stop())
-    void ctx.close()
+  return {
+    stop() {
+      clearInterval(timer)
+      stream.getTracks().forEach((t) => t.stop())
+      void ctx.close()
+    },
+    /** Frecuencia real del pico más fuerte cerca de `hz`, a menos de un semitono. */
+    peakHz(hz: number) {
+      lows.analyser.getFloatFrequencyData(lows.spectrum)
+      const hzPerBin = ctx.sampleRate / FFT_LOW
+      return peakBin(lows.spectrum, Math.round((hz * 0.944) / hzPerBin), Math.round((hz * 1.059) / hzPerBin)) * hzPerBin
+    },
+    noiseDb: () => Math.max(...(noise ?? [-Infinity])),
   }
 }

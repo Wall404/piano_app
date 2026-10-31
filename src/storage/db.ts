@@ -1,4 +1,5 @@
 import { del, entries, get, set } from 'idb-keyval'
+import type { CalibrationProfile } from '../eval/calibrate'
 import type { Result } from '../eval/match'
 import type { Score } from '../model/types'
 
@@ -38,3 +39,6 @@ export const listAttempts = async (scoreId: string) => (await get<Attempt[]>(ATT
 export async function saveAttempt(scoreId: string, attempt: Attempt) {
   await set(ATTEMPTS + scoreId, [...(await listAttempts(scoreId)), attempt])
 }
+
+export const getCalibration = () => get<CalibrationProfile>('calibration')
+export const saveCalibration = (profile: CalibrationProfile) => set('calibration', profile)

@@ -5,7 +5,7 @@ import { connectMidi, type MidiNote } from '../eval/midiInput'
 import { fitRange } from '../model/notes'
 import { groupChords, measureAt, nextChord, timeRange, type Chord } from '../model/score'
 import type { Hand, MeasureRange, NoteEvent, Score } from '../model/types'
-import { saveAttempt } from '../storage/db'
+import { getCalibration, saveAttempt } from '../storage/db'
 import { initialState, usePlayer } from '../store/usePlayer'
 
 const SOON_BEATS = 0.75
@@ -13,8 +13,6 @@ const SOON_BEATS = 0.75
 const HOLD_RATIO = 0.88
 // Cuánto puede separarse una nota de su tiempo, en segundos reales, para contar como acertada.
 const TOLERANCE_SEC = 0.2
-// Demora del micrófono hasta detectar el ataque; se descuenta al juzgar el ritmo.
-const MIC_LATENCY_SEC = 0.22
 
 // ponytail: muestras desde el CDN de Tone.js; pasan a public/samples/piano con la PWA (fase 3).
 const SAMPLES_URL = 'https://tonejs.github.io/audio/salamander/'
@@ -64,6 +62,12 @@ function ready() {
     })
     usePlayer.setState({ loadingAudio: false })
   })())
+}
+
+export const prepareAudio = () => ready()
+
+export function playClick(delaySec: number) {
+  click?.triggerAttackRelease('C6', 0.03, Tone.now() + delaySec)
 }
 
 /** Único reloj de la app: toca la partitura y publica en el store qué notas están activas. */
@@ -221,7 +225,24 @@ export class Engine {
   }
 
   async toggleMic() {
-    if (usePlayer.getState().mic === 'off') return this.connectMic()
+    if (usePlayer.getState().mic !== 'off') return this.closeMic()
+    if (await getCalibration()) return this.connectMic()
+    this.openCalibration()
+  }
+
+  /** La calibración necesita el micrófono para ella sola. */
+  openCalibration() {
+    this.closeMic()
+    if (usePlayer.getState().playing) this.pause()
+    usePlayer.setState({ calibrationOpen: true })
+  }
+
+  async finishCalibration() {
+    usePlayer.setState({ calibrationOpen: false })
+    await this.connectMic()
+  }
+
+  private closeMic() {
     this.stopMic?.()
     this.stopMic = null
     this.inputLatencySec = 0
@@ -234,7 +255,8 @@ export class Engine {
     // El micrófono escucharía a la propia app.
     usePlayer.setState({ mic: 'calibrating', sound: false, metronome: false, midiError: null })
     try {
-      this.stopMic = await startMic({
+      const profile = await getCalibration()
+      const mic = await startMic({
         low,
         high,
         onNote: this.onMidi,
@@ -244,8 +266,12 @@ export class Engine {
         },
         sensitivityDb: () => usePlayer.getState().micSensitivityDb,
         onReady: () => usePlayer.setState({ mic: 'on' }),
+        centsOffset: profile?.centsOffset,
+        registerGain: profile?.registerGain,
       })
-      this.inputLatencySec = MIC_LATENCY_SEC
+      this.stopMic = mic.stop
+      this.inputLatencySec = (profile?.latencyMs ?? 220) / 1000
+      usePlayer.setState({ chordsSupported: profile?.chordsSupported ?? true })
     } catch (err) {
       const denied = err instanceof DOMException && err.name === 'NotAllowedError'
       usePlayer.setState({
@@ -269,7 +295,9 @@ export class Engine {
     if (!this.target) return
     this.pending.delete(midi)
     // ponytail: el micrófono pierde notas internas de acordes; hasta un tercio pueden faltar. Mejorar con Basic Pitch.
-    const allowedMissing = this.inputLatencySec > 0 ? Math.floor(this.target.notes.length / 3) : 0
+    const size = this.target.notes.length
+    const { chordsSupported } = usePlayer.getState()
+    const allowedMissing = this.inputLatencySec > 0 ? (chordsSupported ? Math.floor(size / 3) : size - 1) : 0
     if (this.pending.size > allowedMissing) return
 
     // Acorde completo: si se tocó antes de tiempo, el reloj salta hasta él.
