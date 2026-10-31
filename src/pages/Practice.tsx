@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import Calibration from '../components/Calibration'
 import ResultCard from '../components/ResultCard'
 import Keyboard from '../components/Keyboard'
 import ScoreView from '../components/ScoreView'
@@ -26,6 +27,7 @@ export default function Practice({ score, file, engine, onBack }: Props) {
   const active = usePlayer((s) => s.active)
   const waiting = usePlayer((s) => s.waiting)
   const view = usePlayer((s) => s.view)
+  const calibrationOpen = usePlayer((s) => s.calibrationOpen)
 
   const layout = useMemo(() => {
     if (allKeys) return buildLayout(PIANO_LOW, PIANO_HIGH)
@@ -76,6 +78,13 @@ export default function Practice({ score, file, engine, onBack }: Props) {
         <Keyboard layout={layout} onPress={(midi) => engine.strike(midi)} />
         <ResultCard lastMeasure={score.measures.length} />
       </main>
+
+      {calibrationOpen && (
+        <Calibration
+          onDone={() => void engine.finishCalibration()}
+          onCancel={() => usePlayer.setState({ calibrationOpen: false })}
+        />
+      )}
 
       <TransportBar score={score} hasSheet={Boolean(file)} engine={engine} />
     </div>

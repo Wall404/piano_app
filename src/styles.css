@@ -241,6 +241,22 @@ input[type='range']::-moz-range-thumb {
 
 .sensitivity small { color: var(--text-dim); font-size: 0.8rem; }
 
+/* ---------- Calibración ---------- */
+.calibration { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: var(--gutter); background: rgba(4, 6, 16, 0.75); }
+.calibration-card {
+  width: min(420px, 100%); display: grid; gap: 10px; padding: 20px; border-radius: var(--radius);
+  background: var(--bg-2); border: 1px solid var(--panel-border); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+.calibration-card h2 { margin: 0; font-size: 1.3rem; font-weight: 600; }
+.calibration-card p { margin: 0; line-height: 1.4; }
+.calibration-card small { color: var(--text-dim); }
+.calibration-card .warn { color: #ffe7a3; font-size: 0.9rem; }
+.calibration-bar { height: 6px; border-radius: 99px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.calibration-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--left), var(--right)); transition: width 0.3s; }
+.calibration-card button { min-height: 44px; border-radius: 12px; }
+.calibration-card .primary { border: 0; color: #061026; font-weight: 600; background: linear-gradient(135deg, var(--right), var(--left)); }
+.calibration-card .secondary { background: transparent; border: 1px solid var(--panel-border); }
+
 /* ---------- Biblioteca ---------- */
 .library { max-width: 720px; margin: 0 auto; padding: max(20px, env(safe-area-inset-top)) var(--gutter) 32px; display: grid; gap: 14px; }
 .library h2 { margin: 12px 0 0; font-size: 0.8rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; }

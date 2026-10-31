@@ -23,6 +23,8 @@ export interface PlayerState {
   midiDevices: string[] | null // null: sin conectar
   midiError: string | null
   mic: 'off' | 'calibrating' | 'on'
+  calibrationOpen: boolean
+  chordsSupported: boolean
   micSensitivityDb: number
   result: Result | null // devolución de la última pasada
   view: 'falls' | 'score'
@@ -49,6 +51,8 @@ export const initialState: PlayerState = {
   midiDevices: null,
   midiError: null,
   mic: 'off',
+  calibrationOpen: false,
+  chordsSupported: true,
   micSensitivityDb: 22,
   result: null,
   view: 'falls',

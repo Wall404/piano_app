@@ -15,7 +15,7 @@ Probala en https://wall404.github.io/piano_app/ (Chrome en Android o en la compu
 - Sonido de piano con muestras reales (Tone.js), guardadas para usar sin red después de la primera vez.
 - Te escucha por el micrófono del teléfono, o por teclado MIDI USB: tus notas se marcan en verde o
   rojo, el modo espera sigue tu ritmo y cada pasada termina con una devolución. Requiere HTTPS o localhost.
-  Con el micrófono apagá el sonido de la app y hacé silencio mientras mide el ruido.
+  La primera vez, un asistente calibra ruido, afinación, registros, latencia y acordes.
 - Instalable como app en el teléfono (PWA).
 
 ## PDF a MusicXML
