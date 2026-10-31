@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Engine } from '../engine/transport'
 import { measureChunks, scoreEnd } from '../model/score'
 import type { Score } from '../model/types'
@@ -18,6 +18,11 @@ const PAUSE = (
   </>
 )
 const RESTART = <path d="M12 5V2L7 6.5 12 11V7.5a5 5 0 1 1-5 5H4.5A7.5 7.5 0 1 0 12 5Z" />
+const SLIDERS = <path d="M4 7h9.2a2.5 2.5 0 0 1 4.6 0H20v2h-2.2a2.5 2.5 0 0 1-4.6 0H4V7Zm0 8h2.2a2.5 2.5 0 0 1 4.6 0H20v2h-9.2a2.5 2.5 0 0 1-4.6 0H4v-2Z" />
+
+const TEMPO_MIN = 25
+const TEMPO_MAX = 150
+const TEMPO_PRESETS = [50, 75, 100]
 
 interface Props {
   score: Score
@@ -27,6 +32,7 @@ interface Props {
 
 export default function TransportBar({ score, hasSheet, engine }: Props) {
   const progressRef = useRef<HTMLInputElement>(null)
+  const [optionsOpen, setOptionsOpen] = useState(false)
   const playing = usePlayer((s) => s.playing)
   const loadingAudio = usePlayer((s) => s.loadingAudio)
   const tempoPct = usePlayer((s) => s.tempoPct)
@@ -51,6 +57,13 @@ export default function TransportBar({ score, hasSheet, engine }: Props) {
     [],
   )
 
+  useEffect(() => {
+    if (!optionsOpen) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOptionsOpen(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [optionsOpen])
+
   const midiConnected = Boolean(midiDevices?.length)
   const listening = midiConnected || mic === 'on'
   const count = score.measures.length
@@ -60,6 +73,7 @@ export default function TransportBar({ score, hasSheet, engine }: Props) {
     else next.from = Math.min(next.from, next.to)
     engine.setRange(next)
   }
+  const nudgeTempo = (delta: number) => engine.setTempo(Math.min(TEMPO_MAX, Math.max(TEMPO_MIN, tempoPct + delta)))
 
   return (
     <div className="transport">
@@ -87,21 +101,50 @@ export default function TransportBar({ score, hasSheet, engine }: Props) {
         >
           <Svg>{playing ? PAUSE : PLAY}</Svg>
         </button>
-        <label className="tempo">
-          <span className="tempo-value">
-            {Math.round((score.bpm * tempoPct) / 100)}
-            <small> bpm · {tempoPct}%{loadingAudio && ' · cargando piano…'}</small>
-          </span>
+        <div className="tempo">
+          <div className="tempo-row">
+            <button className="icon-btn small" onClick={() => nudgeTempo(-5)} disabled={tempoPct <= TEMPO_MIN} aria-label="Más lento">−</button>
+            <span className="tempo-value">
+              {Math.round((score.bpm * tempoPct) / 100)}
+              <small> bpm · {tempoPct}%{loadingAudio && ' · cargando piano…'}</small>
+            </span>
+            <button className="icon-btn small" onClick={() => nudgeTempo(5)} disabled={tempoPct >= TEMPO_MAX} aria-label="Más rápido">+</button>
+          </div>
           <input
             type="range"
-            min={25}
-            max={150}
+            min={TEMPO_MIN}
+            max={TEMPO_MAX}
             step={5}
             value={tempoPct}
             onChange={(e) => engine.setTempo(Number(e.target.value))}
             aria-label="Velocidad"
           />
-        </label>
+        </div>
+        <button
+          className={`icon-btn options-btn ${optionsOpen ? 'on' : ''}`}
+          onClick={() => setOptionsOpen(!optionsOpen)}
+          aria-expanded={optionsOpen}
+          aria-controls="practice-options"
+          aria-label={optionsOpen ? 'Cerrar opciones' : 'Opciones'}
+        >
+          <Svg>{SLIDERS}</Svg>
+          {listening && <span className="listening-dot" />}
+        </button>
+      </div>
+
+      {optionsOpen && (
+      <div className="options" id="practice-options" role="region" aria-label="Opciones de práctica">
+      <div className="options-head">
+        <strong>Opciones</strong>
+        <button className="icon-btn small" onClick={() => setOptionsOpen(false)} aria-label="Cerrar opciones">✕</button>
+      </div>
+
+      <div className="chips" aria-label="Velocidad">
+        {TEMPO_PRESETS.map((pct) => (
+          <button key={pct} className={`chip ${tempoPct === pct ? 'sel' : ''}`} onClick={() => engine.setTempo(pct)}>
+            {pct}%
+          </button>
+        ))}
       </div>
 
       <div className="chips" aria-label="Secciones">
@@ -157,6 +200,8 @@ export default function TransportBar({ score, hasSheet, engine }: Props) {
         {midiConnected ? midiDevices!.join(', ') : midiDevices ? 'Sin teclado: conectá el Casio por USB' : 'Conectar teclado MIDI por USB'}
       </button>
       {midiError && <p className="midi-error" role="alert">{midiError}</p>}
+      </div>
+      )}
     </div>
   )
 }
