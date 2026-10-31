@@ -183,6 +183,21 @@ input[type='range']::-moz-range-thumb {
 .play-btn.is-playing { box-shadow: 0 8px 36px rgba(192, 107, 255, 0.5), 0 0 0 6px rgba(192, 107, 255, 0.12); }
 
 .tempo { flex: 1; display: grid; gap: 6px; min-width: 0; }
+.tempo-row { display: flex; align-items: center; gap: 8px; }
+.tempo-row .tempo-value { flex: 1; min-width: 0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.icon-btn.small { width: 36px; height: 36px; font-size: 1.1rem; }
+.icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.options-btn { position: relative; }
+.options-btn.on { background: rgba(56, 225, 255, 0.16); border-color: rgba(56, 225, 255, 0.5); }
+.listening-dot {
+  position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--ok); box-shadow: 0 0 8px var(--ok);
+}
+
+/* Panel de opciones rebatible: en vertical se despliega debajo; en apaisado, cajón lateral. */
+.options { display: grid; gap: 10px; grid-auto-rows: max-content; }
+.options-head { display: flex; align-items: center; justify-content: space-between; }
+.options-head strong { font-size: 0.8rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; }
 .tempo-value { font-size: 1.05rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .tempo-value small { color: var(--text-dim); font-weight: 400; font-size: 0.8rem; }
 
@@ -269,29 +284,56 @@ input[type='range']::-moz-range-thumb {
   .brand h1 { font-size: 1rem; }
 }
 
-/* Escritorio: controles a la derecha del encabezado de reproducción. */
+/* Escritorio: teclado más alto y toggles en una fila. */
 @media (min-width: 900px) {
   :root { --gutter: 28px; --kb-height: clamp(160px, 26dvh, 240px); }
-  .transport { grid-template-columns: 1fr auto; align-items: center; }
-  .progress { grid-column: 1 / -1; }
-  .transport-main { grid-column: 1; }
-  .toggles { grid-column: 2; grid-row: 2 / span 2; grid-template-columns: repeat(2, auto); }
-  .chips { grid-column: 1; }
+  .toggles { grid-template-columns: repeat(4, 1fr); }
 }
 
-/* Celular apaisado: priorizar teclado y caída de notas. */
+/* Celular apaisado: toda la pantalla para la caída de notas; encabezado y
+   controles comparten una sola fila y las opciones salen como cajón lateral. */
 @media (max-height: 500px) and (orientation: landscape) {
-  :root { --kb-height: 34dvh; }
-  .app { grid-template-columns: 1fr 260px; grid-template-rows: auto 1fr; gap: 8px; padding-top: 8px; }
-  .topbar { grid-column: 1 / -1; }
-  .now-playing { display: none; }
-  .instrument { grid-row: 2; grid-column: 1; }
-  .transport { grid-row: 2; grid-column: 2; overflow-y: auto; align-content: start; padding: 10px; }
-  .toggles { grid-template-columns: repeat(2, 1fr); }
-  .play-btn { width: 50px; height: 50px; }
+  :root { --kb-height: 32dvh; }
+  .app {
+    max-width: none; grid-template-columns: minmax(0, 0.8fr) minmax(0, 2fr); grid-template-rows: auto 1fr; gap: 6px 10px;
+    padding: 6px max(10px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  }
+  .topbar { grid-row: 1; grid-column: 1; }
+  .brand { gap: 8px; }
+  .brand h1 { font-size: 0.95rem; }
   .brand p { display: none; }
+  .bar-counter { padding: 2px 8px; }
+  .bar-counter small { display: none; }
+  .bar-counter strong { font-size: 1.05rem; }
+  .now-playing { display: none; }
+  .instrument { grid-row: 2; grid-column: 1 / -1; }
+  .transport {
+    grid-row: 1; grid-column: 2; display: flex; align-items: center; gap: 10px;
+    padding: 4px 6px 4px 12px; background: none; border: 0; backdrop-filter: none;
+  }
+  .progress { flex: 1; min-width: 80px; }
+  .transport-main { flex: none; gap: 8px; }
+  .icon-btn { width: 40px; height: 40px; }
+  .icon-btn.small { width: 32px; height: 32px; }
+  .play-btn { width: 44px; height: 44px; }
+  .play-btn svg { width: 22px; height: 22px; }
+  .transport-main .tempo { flex: none; }
+  .transport-main .tempo > input[type='range'] { display: none; }
+  .tempo-value { font-size: 0.95rem; min-width: 7.5em; }
+  .options {
+    position: fixed; z-index: 20; top: 0; right: 0; bottom: 0; width: min(340px, 88vw);
+    padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 12px 12px;
+    overflow-y: auto; overscroll-behavior: contain;
+    background: rgba(14, 19, 40, 0.94); border-left: 1px solid var(--panel-border);
+    box-shadow: -20px 0 50px rgba(0, 0, 0, 0.5); backdrop-filter: blur(14px);
+    animation: options-in 0.18s ease-out;
+  }
+  .toggles { grid-template-columns: repeat(2, 1fr); }
 }
+
+@keyframes options-in { from { transform: translateX(24px); opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
   .key, .note, .play-btn { transition: none; }
+  .options { animation: none; }
 }
