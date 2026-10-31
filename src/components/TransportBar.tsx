@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Engine } from '../engine/transport'
 import { measureChunks, scoreEnd } from '../model/score'
 import type { Score } from '../model/types'
@@ -18,6 +18,11 @@ const PAUSE = (
   </>
 )
 const RESTART = <path d="M12 5V2L7 6.5 12 11V7.5a5 5 0 1 1-5 5H4.5A7.5 7.5 0 1 0 12 5Z" />
+const SLIDERS = <path d="M4 7h9.2a2.5 2.5 0 0 1 4.6 0H20v2h-2.2a2.5 2.5 0 0 1-4.6 0H4V7Zm0 8h2.2a2.5 2.5 0 0 1 4.6 0H20v2h-9.2a2.5 2.5 0 0 1-4.6 0H4v-2Z" />
+
+const TEMPO_MIN = 25
+const TEMPO_MAX = 150
+const TEMPO_PRESETS = [50, 75, 100]
 
 interface Props {
   score: Score
@@ -27,6 +32,7 @@ interface Props {
 
 export default function TransportBar({ score, hasSheet, engine }: Props) {
   const progressRef = useRef<HTMLInputElement>(null)
+  const [optionsOpen, setOptionsOpen] = useState(false)
   const playing = usePlayer((s) => s.playing)
   const loadingAudio = usePlayer((s) => s.loadingAudio)
   const tempoPct = usePlayer((s) => s.tempoPct)
@@ -51,6 +57,13 @@ export default function TransportBar({ score, hasSheet, engine }: Props) {
     [],
   )
 
+  useEffect(() => {
+    if (!optionsOpen) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOptionsOpen(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [optionsOpen])
+
   const midiConnected = Boolean(midiDevices?.length)
   const listening = midiConnected || mic === 'on'
   const count = score.measures.length
@@ -60,6 +73,7 @@ export default function TransportBar({ score, hasSheet, engine }: Props) {
     else next.from = Math.min(next.from, next.to)
     engine.setRange(next)
   }
+  const nudgeTempo = (delta: number) => engine.setTempo(Math.min(TEMPO_MAX, Math.max(TEMPO_MIN, tempoPct + delta)))
 
   return (
     <div className="transport">
@@ -87,76 +101,107 @@ export default function TransportBar({ score, hasSheet, engine }: Props) {
         >
           <Svg>{playing ? PAUSE : PLAY}</Svg>
         </button>
-        <label className="tempo">
-          <span className="tempo-value">
-            {Math.round((score.bpm * tempoPct) / 100)}
-            <small> bpm · {tempoPct}%{loadingAudio && ' · cargando piano…'}</small>
-          </span>
+        <div className="tempo">
+          <div className="tempo-row">
+            <button className="icon-btn small" onClick={() => nudgeTempo(-5)} disabled={tempoPct <= TEMPO_MIN} aria-label="Más lento">−</button>
+            <span className="tempo-value">
+              {Math.round((score.bpm * tempoPct) / 100)}
+              <small> bpm · {tempoPct}%{loadingAudio && ' · cargando piano…'}</small>
+            </span>
+            <button className="icon-btn small" onClick={() => nudgeTempo(5)} disabled={tempoPct >= TEMPO_MAX} aria-label="Más rápido">+</button>
+          </div>
           <input
             type="range"
-            min={25}
-            max={150}
+            min={TEMPO_MIN}
+            max={TEMPO_MAX}
             step={5}
             value={tempoPct}
             onChange={(e) => engine.setTempo(Number(e.target.value))}
             aria-label="Velocidad"
           />
-        </label>
-      </div>
-
-      <div className="chips" aria-label="Secciones">
-        <button className={`chip ${range === null ? 'sel' : ''}`} onClick={() => engine.setRange(null)}>
-          Todo
+        </div>
+        <button
+          className={`icon-btn options-btn ${optionsOpen ? 'on' : ''}`}
+          onClick={() => setOptionsOpen(!optionsOpen)}
+          aria-expanded={optionsOpen}
+          aria-controls="practice-options"
+          aria-label={optionsOpen ? 'Cerrar opciones' : 'Opciones'}
+        >
+          <Svg>{SLIDERS}</Svg>
+          {listening && <span className="listening-dot" />}
         </button>
-        <label className="chip range">
-          Compases
-          <input type="number" min={1} max={count} value={range?.from ?? 1} onChange={(e) => setBound('from', e.target.valueAsNumber)} aria-label="Desde el compás" />
-          a
-          <input type="number" min={1} max={count} value={range?.to ?? count} onChange={(e) => setBound('to', e.target.valueAsNumber)} aria-label="Hasta el compás" />
-        </label>
-        {measureChunks(score).map((c) => (
-          <button key={c.from} className={`chip ${range?.from === c.from && range.to === c.to ? 'sel' : ''}`} onClick={() => engine.setRange(c)}>
-            {c.from}–{c.to}
+      </div>
+
+      {optionsOpen && (
+        <div className="options" id="practice-options" role="region" aria-label="Opciones de práctica">
+          <div className="options-head">
+            <strong>Opciones</strong>
+            <button className="icon-btn small" onClick={() => setOptionsOpen(false)} aria-label="Cerrar opciones">✕</button>
+          </div>
+
+          <div className="chips" aria-label="Velocidad">
+            {TEMPO_PRESETS.map((pct) => (
+              <button key={pct} className={`chip ${tempoPct === pct ? 'sel' : ''}`} onClick={() => engine.setTempo(pct)}>
+                {pct}%
+              </button>
+            ))}
+          </div>
+
+          <div className="chips" aria-label="Secciones">
+            <button className={`chip ${range === null ? 'sel' : ''}`} onClick={() => engine.setRange(null)}>
+              Todo
+            </button>
+            <label className="chip range">
+              Compases
+              <input type="number" min={1} max={count} value={range?.from ?? 1} onChange={(e) => setBound('from', e.target.valueAsNumber)} aria-label="Desde el compás" />
+              a
+              <input type="number" min={1} max={count} value={range?.to ?? count} onChange={(e) => setBound('to', e.target.valueAsNumber)} aria-label="Hasta el compás" />
+            </label>
+            {measureChunks(score).map((c) => (
+              <button key={c.from} className={`chip ${range?.from === c.from && range.to === c.to ? 'sel' : ''}`} onClick={() => engine.setRange(c)}>
+                {c.from}–{c.to}
+              </button>
+            ))}
+          </div>
+
+          <div className="toggles">
+            <Toggle on={hands.L} onClick={() => engine.setHands({ ...hands, L: !hands.L })} className="L">Mano izq.</Toggle>
+            <Toggle on={hands.R} onClick={() => engine.setHands({ ...hands, R: !hands.R })} className="R">Mano der.</Toggle>
+            <Toggle on={repeat} onClick={() => engine.setRepeat(!repeat)}>Repetir</Toggle>
+            <Toggle on={sound} onClick={() => usePlayer.setState({ sound: !sound })}>Sonido</Toggle>
+            <Toggle on={metronome} onClick={() => usePlayer.setState({ metronome: !metronome })}>Metrónomo</Toggle>
+            <Toggle on={allKeys} onClick={() => usePlayer.setState({ allKeys: !allKeys })}>88 teclas</Toggle>
+            <Toggle on={waitMode} disabled={!listening} onClick={() => engine.setWaitMode(!waitMode)}>Modo espera</Toggle>
+            {hasSheet && (
+              <Toggle on={view === 'score'} onClick={() => usePlayer.setState({ view: view === 'score' ? 'falls' : 'score' })}>Partitura</Toggle>
+            )}
+          </div>
+
+          <button className={`midi-btn ${mic === 'on' ? 'on' : ''}`} onClick={() => void engine.toggleMic()}>
+            <span className="dot" />
+            {mic === 'off' ? 'Escuchar con el micrófono' : mic === 'calibrating' ? 'Midiendo el ruido: hacé silencio…' : 'Escuchando: tocá para apagar'}
           </button>
-        ))}
-      </div>
-
-      <div className="toggles">
-        <Toggle on={hands.L} onClick={() => engine.setHands({ ...hands, L: !hands.L })} className="L">Mano izq.</Toggle>
-        <Toggle on={hands.R} onClick={() => engine.setHands({ ...hands, R: !hands.R })} className="R">Mano der.</Toggle>
-        <Toggle on={repeat} onClick={() => engine.setRepeat(!repeat)}>Repetir</Toggle>
-        <Toggle on={sound} onClick={() => usePlayer.setState({ sound: !sound })}>Sonido</Toggle>
-        <Toggle on={metronome} onClick={() => usePlayer.setState({ metronome: !metronome })}>Metrónomo</Toggle>
-        <Toggle on={allKeys} onClick={() => usePlayer.setState({ allKeys: !allKeys })}>88 teclas</Toggle>
-        <Toggle on={waitMode} disabled={!listening} onClick={() => engine.setWaitMode(!waitMode)}>Modo espera</Toggle>
-        {hasSheet && (
-          <Toggle on={view === 'score'} onClick={() => usePlayer.setState({ view: view === 'score' ? 'falls' : 'score' })}>Partitura</Toggle>
-        )}
-      </div>
-
-      <button className={`midi-btn ${mic === 'on' ? 'on' : ''}`} onClick={() => void engine.toggleMic()}>
-        <span className="dot" />
-        {mic === 'off' ? 'Escuchar con el micrófono' : mic === 'calibrating' ? 'Midiendo el ruido: hacé silencio…' : 'Escuchando: tocá para apagar'}
-      </button>
-      {mic === 'on' && (
-        <label className="tempo sensitivity">
-          <small>Sensibilidad</small>
-          <input
-            type="range"
-            min={10}
-            max={40}
-            step={1}
-            value={50 - micSensitivityDb}
-            onChange={(e) => usePlayer.setState({ micSensitivityDb: 50 - Number(e.target.value) })}
-            aria-label="Sensibilidad del micrófono"
-          />
-        </label>
+          {mic === 'on' && (
+            <label className="tempo sensitivity">
+              <small>Sensibilidad</small>
+              <input
+                type="range"
+                min={10}
+                max={40}
+                step={1}
+                value={50 - micSensitivityDb}
+                onChange={(e) => usePlayer.setState({ micSensitivityDb: 50 - Number(e.target.value) })}
+                aria-label="Sensibilidad del micrófono"
+              />
+            </label>
+          )}
+          <button className={`midi-btn ${midiConnected ? 'on' : ''}`} onClick={() => void engine.connectMidi()}>
+            <span className="dot" />
+            {midiConnected ? midiDevices!.join(', ') : midiDevices ? 'Sin teclado: conectá el Casio por USB' : 'Conectar teclado MIDI por USB'}
+          </button>
+          {midiError && <p className="midi-error" role="alert">{midiError}</p>}
+        </div>
       )}
-      <button className={`midi-btn ${midiConnected ? 'on' : ''}`} onClick={() => void engine.connectMidi()}>
-        <span className="dot" />
-        {midiConnected ? midiDevices!.join(', ') : midiDevices ? 'Sin teclado: conectá el Casio por USB' : 'Conectar teclado MIDI por USB'}
-      </button>
-      {midiError && <p className="midi-error" role="alert">{midiError}</p>}
     </div>
   )
 }
