@@ -18,6 +18,7 @@ Probala en https://wall404.github.io/piano_app/ (Chrome en Android o en la compu
   rojo, el modo espera sigue tu ritmo y cada pasada termina con una devolución. Requiere HTTPS o localhost.
   La primera vez, un asistente calibra ruido, afinación, registros, latencia y acordes.
 - Progreso por partitura: gráfico de aciertos, lista de intentos y los compases con más errores.
+- Prueba de acordes: mide cuántos acordes de 3 notas distingue el micrófono en tu piano y deja un resultado para copiar.
 - Instalable como app en el teléfono (PWA).
 
 ## PDF a MusicXML

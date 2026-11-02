@@ -288,6 +288,19 @@ input[type='range']::-moz-range-thumb {
 }
 .attempts small { color: var(--text-dim); }
 
+/* ---------- Prueba de acordes ---------- */
+.chord-test .keyboard { height: var(--kb-height); border-radius: 12px; }
+.chord-notes { min-height: 40px; }
+.chord-notes .chip.hit { color: var(--ok); border-color: var(--ok); }
+.chord-notes .chip.miss { color: var(--text-dim); }
+.chord-notes .chip.extra { color: var(--bad); border-color: var(--bad); }
+.chord-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.midi-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.chord-report {
+  margin: 0; padding: 12px; overflow-x: auto; border-radius: 12px; font: inherit; font-size: 0.8rem; line-height: 1.5;
+  white-space: pre-wrap; user-select: text; background: var(--panel); border: 1px solid var(--panel-border);
+}
+
 /* Pantallas angostas: controles en dos filas de toggles. */
 @media (max-width: 420px) {
   .brand h1 { font-size: 1rem; }
