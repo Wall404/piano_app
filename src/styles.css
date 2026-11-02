@@ -248,6 +248,19 @@ input[type='range']::-moz-range-thumb {
 .score-row strong { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .score-row small { color: var(--text-dim); }
 .back { font-size: 1.2rem; }
+.collection { padding: 10px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--panel-border); }
+.collection summary { min-height: 36px; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.collection summary::before { content: '▸'; color: var(--text-dim); }
+.collection[open] summary::before { content: '▾'; }
+.collection summary strong { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.collection summary small { flex: none; color: var(--text-dim); }
+.collection .score-list { margin: 8px 0; }
+.collection .midi-btn { width: 100%; }
+.rename { flex: 1; min-width: 0; display: flex; gap: 8px; }
+.rename input {
+  flex: 1; width: 100%; min-width: 0; padding: 8px 12px; font: inherit; font-size: 1rem; color: var(--text);
+  background: rgba(255, 255, 255, 0.05); border: 1px solid var(--panel-border); border-radius: 12px;
+}
 
 /* ---------- Partitura y devolución ---------- */
 .instrument { position: relative; }

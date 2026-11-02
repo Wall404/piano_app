@@ -8,6 +8,7 @@ Probala en https://wall404.github.io/piano_app/ (Chrome en Android o en la compu
 ## Qué hace hoy
 
 - Biblioteca local: carga MusicXML, MXL y MIDI, los guarda en el navegador y recuerda el último tempo y sección de cada obra.
+- Colecciones: varias obras de un PDF agrupadas, cada una con su progreso y nombre editable.
 - Partitura dibujada con un cursor que sigue el compás (solo MusicXML).
 - Teclado SVG ajustado al rango de la obra, o las 88 teclas completas.
 - Notas que caen hacia el teclado, con colores por mano, y aviso de la próxima tecla.
@@ -25,6 +26,16 @@ Probala en https://wall404.github.io/piano_app/ (Chrome en Android o en la compu
 Instalá [Audiveris](https://github.com/audiveris/audiveris) y corré `npm run pdf -- pieza.pdf`.
 El resultado queda en `scores/`, que no se sube al repo. El reconocimiento comete errores:
 revisá la partitura en la app y corregila en MuseScore si hace falta.
+
+Si el PDF trae varias obras, Audiveris las separa cuando puede y el script escribe
+`scores/pieza.coleccion.json`. Si no detecta los cortes, marcalos por páginas:
+
+```bash
+npm run pdf -- pieza.pdf --paginas 1-2,3-5
+```
+
+Después cargá en la app el `.coleccion.json` junto con sus `.mxl`: aparecen agrupados en la
+Biblioteca, en orden y con su título. También podés cargar varias partituras juntas sin el `.json`.
 
 ## Requisitos
 

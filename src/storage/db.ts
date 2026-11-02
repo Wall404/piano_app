@@ -1,7 +1,7 @@
 import { del, entries, get, set, update } from 'idb-keyval'
 import type { CalibrationProfile } from '../eval/calibrate'
 import type { Result } from '../eval/match'
-import type { MeasureRange, Score } from '../model/types'
+import type { Collection, MeasureRange, Score } from '../model/types'
 
 export interface StoredScore {
   score: Score
@@ -28,6 +28,7 @@ export interface ScorePrefs {
 const SCORE = 'score:'
 const ATTEMPTS = 'attempts:'
 const PREFS = 'prefs:'
+const COLLECTION = 'collection:'
 const DEFAULT_PREFS: ScorePrefs = { tempoPct: 100, range: null, sections: [] }
 
 export async function listScores(): Promise<StoredScore[]> {
@@ -45,6 +46,24 @@ export async function deleteScore(id: string) {
   await del(SCORE + id)
   await del(ATTEMPTS + id)
   await del(PREFS + id)
+}
+
+export const renameScore = (id: string, title: string) =>
+  update<StoredScore>(SCORE + id, (stored) => ({ ...stored!, score: { ...stored!.score, title } }))
+
+export async function listCollections(): Promise<Collection[]> {
+  const all = await entries<string, Collection>()
+  return all.filter(([key]) => key.startsWith(COLLECTION)).map(([, value]) => value)
+}
+
+export async function saveCollection(collection: Collection, items: { score: Score; file?: Blob }[]) {
+  for (const { score, file } of items) await saveScore(score, file)
+  await set(COLLECTION + collection.id, collection)
+}
+
+export async function deleteCollection(collection: Collection) {
+  await Promise.all(collection.scoreIds.map(deleteScore))
+  await del(COLLECTION + collection.id)
 }
 
 export const listAttempts = async (scoreId: string) => (await get<Attempt[]>(ATTEMPTS + scoreId)) ?? []

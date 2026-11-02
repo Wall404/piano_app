@@ -30,13 +30,13 @@ La v1 cubre los cuatro módulos. El 4 (micrófono) es el de más riesgo técnico
 
 ### 1.1 PDF con varias obras (colecciones)
 
-Un PDF puede traer una sola obra o una colección (un cuaderno de estudios, un álbum). La app lo detecta y, si es una colección, lista cada obra por separado para elegirla. Entra en la fase 4; no cambia lo ya hecho.
+Un PDF puede traer una sola obra o una colección (un cuaderno de estudios, un álbum). La app lo detecta y, si es una colección, lista cada obra por separado para elegirla. Entra en la fase 4; no cambia lo ya hecho. Hoy la detección corre en la PC con `npm run pdf`, que deja `pieza.coleccion.json` para cargar junto con los `.mxl`.
 
 - **Detección automática:** Audiveris ya separa "movimientos" cuando el primer sistema de una obra está sangrado, y exporta un archivo por obra (`pieza.mvt1.mxl`, `pieza.mvt2.mxl`, …). Si sale más de un archivo, el script lo trata como colección.
 - **Nombres:** cada obra toma el título que Audiveris lee del encabezado (OCR); si no hay, queda como "Obra 3 (pág. 7)" y se puede renombrar.
 - **Interfaz:** en la Biblioteca la colección aparece como un grupo desplegable con sus obras en orden, cada una con su propio progreso, secciones e historial.
-- **Marcar a mano:** al subir el PDF hay una casilla "Es una colección". Si Audiveris no detectó cortes (pasa en antologías sin sangría), la app muestra las páginas en miniatura y el usuario marca dónde empieza cada obra. El script vuelve a correr Audiveris por rangos con `-sheets` (por ejemplo `-sheets 1-2`, `-sheets 3-5`) y obtiene una obra por rango.
-- **Corregir:** se puede unir dos obras que se cortaron mal, o separar una en dos, sin volver a subir el PDF.
+- **Marcar a mano (hoy, con `npm run pdf -- pieza.pdf --paginas 1-2,3-5`; las miniaturas en la app quedan pendientes):** al subir el PDF hay una casilla "Es una colección". Si Audiveris no detectó cortes (pasa en antologías sin sangría), la app muestra las páginas en miniatura y el usuario marca dónde empieza cada obra. El script vuelve a correr Audiveris por rangos con `-sheets` (por ejemplo `-sheets 1-2`, `-sheets 3-5`) y obtiene una obra por rango.
+- **Corregir (pendiente; renombrar una obra sí está):** se puede unir dos obras que se cortaron mal, o separar una en dos, sin volver a subir el PDF.
 
 ```ts
 interface Collection { id: string; title: string; pdfName: string; scoreIds: string[] } // en orden

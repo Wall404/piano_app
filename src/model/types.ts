@@ -18,6 +18,16 @@ export interface Score {
   measures: { index: number; start: number }[] // inicio de cada compás en segundos
   notes: NoteEvent[] // ordenadas por time
   source: { kind: 'musicxml' | 'midi' | 'builtin'; fileName: string }
+  collectionId?: string
+  pages?: [number, number] // páginas del PDF original
+}
+
+/** Obras que vinieron juntas, por ejemplo de un mismo PDF. */
+export interface Collection {
+  id: string
+  title: string
+  pdfName: string
+  scoreIds: string[] // en orden
 }
 
 /** Compases a practicar, inclusive. */
