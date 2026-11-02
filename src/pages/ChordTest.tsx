@@ -126,6 +126,14 @@ export default function ChordTest({ onBack }: { onBack: () => void }) {
     setTesting(false)
   }
 
+  const finish = (all: ChordAttempt[]) => {
+    stop()
+    if (all.length === 0) return
+    const record = { date: new Date().toISOString(), attempts: all, device: device.current! }
+    setLast(record)
+    void saveChordTest(record)
+  }
+
   // Lo no oído también cuenta: si el detector no reaccionó, el acorde queda en 0 de 3.
   const next = () => {
     const all = [...attempts, scoreAttempt(target.current, [...heard.current])]
@@ -134,10 +142,7 @@ export default function ChordTest({ onBack }: { onBack: () => void }) {
       arm(index + 1)
       return
     }
-    stop()
-    const record = { date: new Date().toISOString(), attempts: all, device: device.current! }
-    setLast(record)
-    void saveChordTest(record)
+    finish(all)
   }
 
   const copy = async (text: string) => {
@@ -187,7 +192,10 @@ export default function ChordTest({ onBack }: { onBack: () => void }) {
               {index + 1 < CHORDS.length ? 'Siguiente' : 'Terminar'}
             </button>
           </div>
-          <button className="midi-btn" onClick={stop}>Cancelar la prueba</button>
+          {/* Cortar antes de tiempo no pierde lo ya medido. */}
+          <button className="midi-btn" onClick={() => finish(result ? [...attempts, result] : attempts)}>
+            {attempts.length > 0 || result ? 'Terminar acá y ver el resultado' : 'Cancelar la prueba'}
+          </button>
         </>
       ) : (
         <>
