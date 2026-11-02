@@ -13,7 +13,7 @@ Probala en https://wall404.github.io/piano_app/ (Chrome en Android o en la compu
 - Notas que caen hacia el teclado, con colores por mano, y aviso de la próxima tecla.
 - Práctica por rango de compases en bucle, velocidad de 25 % a 150 %, metrónomo y una mano por vez.
 - Secciones guardadas con nombre por partitura, y subida automática de 5 % cada 3 pasadas sin errores.
-- Sonido de piano con muestras reales (Tone.js), guardadas para usar sin red después de la primera vez.
+- Sonido de piano con muestras reales (Tone.js), incluidas en la app para usarla sin red.
 - Te escucha por el micrófono del teléfono, o por teclado MIDI USB: tus notas se marcan en verde o
   rojo, el modo espera sigue tu ritmo y cada pasada termina con una devolución. Requiere HTTPS o localhost.
   La primera vez, un asistente calibra ruido, afinación, registros, latencia y acordes.

@@ -125,7 +125,7 @@ React + TypeScript + Vite en el front, Tone.js para sonido y tiempo, OpenSheetMu
 | MIDI | [@tonejs/midi](https://github.com/Tonejs/Midi) | Convierte un `.mid` a pistas y notas en JSON con tiempos en segundos y compases. |
 | Audio y tiempo | [Tone.js](https://tonejs.github.io) | `Transport` con `bpm`, `loop`, `loopStart` y `loopEnd` resuelve tempo y loop de sección; `Sampler` toca muestras de piano reales. |
 | Teclado | SVG propio en React | 88 teclas son 88 `<rect>`: no justifica una librería y da control total del diseño. |
-| Cascada (opcional) | Canvas 2D | Muchas barras animadas a 60 fps rinden mejor en canvas que en DOM. El prototipo usa DOM y pasa a canvas en la fase 3. |
+| Cascada (opcional) | Canvas 2D | Muchas barras animadas a 60 fps rinden mejor en canvas que en DOM. |
 | Persistencia | IndexedDB vía [idb-keyval](https://github.com/jakearchibald/idb-keyval) | Guardar archivos de partitura, secciones e historial con 2 funciones. |
 | PWA | [vite-plugin-pwa](https://vite-pwa-org.netlify.app) | Instalar en el teléfono y usar sin red. |
 | Entrada MIDI | Web MIDI API (nativa) | Opcional, con cable OTG: notas exactas para el modo espera y la evaluación. No funciona en Safari iOS. |
@@ -245,7 +245,7 @@ El riesgo mayor es la detección de acordes por micrófono; el plan lo aísla en
 | El micrófono exige HTTPS fuera de `localhost` | No anda desde el teléfono en la red local | GitHub Pages (repo público) ya da HTTPS; para desarrollo local, certificado con mkcert |
 | Web MIDI no existe en Safari iOS | Sin modo espera con MIDI en iPhone | No aplica por ahora: el dispositivo principal es Android |
 | El OMR de los PDF (Audiveris) comete errores: notas, ritmos o manos mal leídas | Notas o manos mal asignadas | Revisar la partitura renderizada antes de practicar y corregir en MuseScore; preferir PDF digitales a escaneos; tests con archivos reales en `tests/fixtures` |
-| Muestras de piano pesan varios MB | Primera carga lenta en el teléfono | Hoy salen del CDN de Tone.js; en la fase 3 se copian a `public/samples/piano/` (1 muestra cada 3 semitonos, el Sampler interpola) y se cachean con la PWA |
+| Muestras de piano pesan varios MB | Primera carga lenta en el teléfono | Están en `public/samples/piano/` (1 muestra cada 3 semitonos, el Sampler interpola; unos 2 MB) y las precachea la PWA |
 
 Respuestas de Wally (30/10/2026):
 
