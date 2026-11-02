@@ -21,13 +21,13 @@ export default defineConfig({
         icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,musicxml}'],
+        globPatterns: ['**/*.{js,css,html,svg,musicxml,mp3}'],
         maximumFileSizeToCacheInBytes: 6_000_000,
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/(tonejs\.github\.io\/audio|fonts\.(googleapis|gstatic)\.com)\//,
+            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\//,
             handler: 'CacheFirst',
-            options: { cacheName: 'audio-y-fuentes', cacheableResponse: { statuses: [0, 200] } },
+            options: { cacheName: 'fuentes', cacheableResponse: { statuses: [0, 200] } },
           },
         ],
       },

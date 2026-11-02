@@ -14,8 +14,7 @@ const HOLD_RATIO = 0.88
 // Cuánto puede separarse una nota de su tiempo, en segundos reales, para contar como acertada.
 const TOLERANCE_SEC = 0.2
 
-// ponytail: muestras desde el CDN de Tone.js; pasan a public/samples/piano con la PWA (fase 3).
-const SAMPLES_URL = 'https://tonejs.github.io/audio/salamander/'
+const SAMPLES_URL = `${import.meta.env.BASE_URL}samples/piano/`
 
 function sampleUrls() {
   const urls: Record<string, string> = { A0: 'A0.mp3', C8: 'C8.mp3' }
