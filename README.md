@@ -7,15 +7,17 @@ Probala en https://wall404.github.io/piano_app/ (Chrome en Android o en la compu
 
 ## Qué hace hoy
 
-- Biblioteca local: carga MusicXML, MXL y MIDI, y los guarda en el navegador.
+- Biblioteca local: carga MusicXML, MXL y MIDI, los guarda en el navegador y recuerda el último tempo y sección de cada obra.
 - Partitura dibujada con un cursor que sigue el compás (solo MusicXML).
 - Teclado SVG ajustado al rango de la obra, o las 88 teclas completas.
 - Notas que caen hacia el teclado, con colores por mano, y aviso de la próxima tecla.
 - Práctica por rango de compases en bucle, velocidad de 25 % a 150 %, metrónomo y una mano por vez.
+- Secciones guardadas con nombre por partitura, y subida automática de 5 % cada 3 pasadas sin errores.
 - Sonido de piano con muestras reales (Tone.js), guardadas para usar sin red después de la primera vez.
 - Te escucha por el micrófono del teléfono, o por teclado MIDI USB: tus notas se marcan en verde o
   rojo, el modo espera sigue tu ritmo y cada pasada termina con una devolución. Requiere HTTPS o localhost.
   La primera vez, un asistente calibra ruido, afinación, registros, latencia y acordes.
+- Progreso por partitura: gráfico de aciertos, lista de intentos y los compases con más errores.
 - Instalable como app en el teléfono (PWA).
 
 ## PDF a MusicXML

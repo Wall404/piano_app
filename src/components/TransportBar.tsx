@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Engine } from '../engine/transport'
+import { TEMPO_MAX } from '../eval/match'
 import { measureChunks, scoreEnd } from '../model/score'
 import type { Score } from '../model/types'
 import { usePlayer } from '../store/usePlayer'
@@ -21,7 +22,6 @@ const RESTART = <path d="M12 5V2L7 6.5 12 11V7.5a5 5 0 1 1-5 5H4.5A7.5 7.5 0 1 0
 const SLIDERS = <path d="M4 7h9.2a2.5 2.5 0 0 1 4.6 0H20v2h-2.2a2.5 2.5 0 0 1-4.6 0H4V7Zm0 8h2.2a2.5 2.5 0 0 1 4.6 0H20v2h-9.2a2.5 2.5 0 0 1-4.6 0H4v-2Z" />
 
 const TEMPO_MIN = 25
-const TEMPO_MAX = 150
 const TEMPO_PRESETS = [50, 75, 100]
 
 interface Props {
@@ -33,10 +33,13 @@ interface Props {
 export default function TransportBar({ score, hasSheet, engine }: Props) {
   const progressRef = useRef<HTMLInputElement>(null)
   const [optionsOpen, setOptionsOpen] = useState(false)
+  const [sectionName, setSectionName] = useState('')
   const playing = usePlayer((s) => s.playing)
   const loadingAudio = usePlayer((s) => s.loadingAudio)
   const tempoPct = usePlayer((s) => s.tempoPct)
   const range = usePlayer((s) => s.range)
+  const sections = usePlayer((s) => s.sections)
+  const autoTempo = usePlayer((s) => s.autoTempo)
   const repeat = usePlayer((s) => s.repeat)
   const sound = usePlayer((s) => s.sound)
   const metronome = usePlayer((s) => s.metronome)
@@ -151,6 +154,12 @@ export default function TransportBar({ score, hasSheet, engine }: Props) {
             <button className={`chip ${range === null ? 'sel' : ''}`} onClick={() => engine.setRange(null)}>
               Todo
             </button>
+            {sections.map(({ name, from, to }) => (
+              <span key={name} className={`chip saved ${range?.from === from && range.to === to ? 'sel' : ''}`}>
+                <button onClick={() => engine.setRange({ from, to })}>{name}</button>
+                <button onClick={() => engine.deleteSection(name)} aria-label={`Borrar ${name}`}>×</button>
+              </span>
+            ))}
             <label className="chip range">
               Compases
               <input type="number" min={1} max={count} value={range?.from ?? 1} onChange={(e) => setBound('from', e.target.valueAsNumber)} aria-label="Desde el compás" />
@@ -164,10 +173,31 @@ export default function TransportBar({ score, hasSheet, engine }: Props) {
             ))}
           </div>
 
+          {range && (
+            <form
+              className="section-save"
+              onSubmit={(e) => {
+                e.preventDefault()
+                engine.saveSection(sectionName)
+                setSectionName('')
+              }}
+            >
+              <input
+                value={sectionName}
+                onChange={(e) => setSectionName(e.target.value)}
+                placeholder={`Compases ${range.from}–${range.to}`}
+                maxLength={40}
+                aria-label="Nombre de la sección"
+              />
+              <button className="chip">Guardar</button>
+            </form>
+          )}
+
           <div className="toggles">
             <Toggle on={hands.L} onClick={() => engine.setHands({ ...hands, L: !hands.L })} className="L">Mano izq.</Toggle>
             <Toggle on={hands.R} onClick={() => engine.setHands({ ...hands, R: !hands.R })} className="R">Mano der.</Toggle>
             <Toggle on={repeat} onClick={() => engine.setRepeat(!repeat)}>Repetir</Toggle>
+            <Toggle on={autoTempo} onClick={() => usePlayer.setState({ autoTempo: !autoTempo })}>Subir tempo</Toggle>
             <Toggle on={sound} onClick={() => usePlayer.setState({ sound: !sound })}>Sonido</Toggle>
             <Toggle on={metronome} onClick={() => usePlayer.setState({ metronome: !metronome })}>Metrónomo</Toggle>
             <Toggle on={allKeys} onClick={() => usePlayer.setState({ allKeys: !allKeys })}>88 teclas</Toggle>

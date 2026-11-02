@@ -290,10 +290,32 @@ input[type='range']::-moz-range-thumb {
 .result p { margin: 0; font-size: 0.85rem; }
 .result-close { position: absolute; top: 2px; right: 2px; width: 44px; height: 44px; background: none; border: 0; font-size: 1.2rem; }
 .chip.range { color: var(--text-dim); align-items: center; }
+.chip.saved { padding: 0; gap: 0; align-items: center; }
+.chip.saved button { background: none; border: 0; padding: 8px 4px 8px 14px; max-width: 12em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.chip.saved button + button { padding: 8px 12px 8px 6px; color: var(--text-dim); }
+.section-save { display: flex; gap: 8px; }
+.section-save input {
+  flex: 1; min-width: 0; padding: 8px 12px; font: inherit; font-size: 1rem; color: var(--text);
+  background: rgba(255, 255, 255, 0.05); border: 1px solid var(--panel-border); border-radius: 12px;
+}
+.score-list .chip { min-height: 44px; align-items: center; }
 .chip.range input {
   width: 3.2em; padding: 2px 4px; text-align: center; font: inherit; color: var(--text);
   background: rgba(255, 255, 255, 0.08); border: 1px solid var(--panel-border); border-radius: 6px;
 }
+
+/* ---------- Progreso ---------- */
+.chart { display: block; width: 100%; height: auto; padding: 12px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--panel-border); }
+.chart line { stroke: var(--panel-border); }
+.chart text { fill: var(--text-dim); font-size: 8px; }
+.chart path { fill: var(--right); }
+.chart path:hover { fill: var(--text); }
+.attempts { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.attempts li {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; padding: 10px 14px; border-radius: 12px;
+  font-size: 0.9rem; font-variant-numeric: tabular-nums; background: var(--panel); border: 1px solid var(--panel-border);
+}
+.attempts small { color: var(--text-dim); }
 
 /* Pantallas angostas: controles en dos filas de toggles. */
 @media (max-width: 420px) {

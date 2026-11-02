@@ -1,11 +1,11 @@
 import * as Tone from 'tone'
-import { match, type Played } from '../eval/match'
+import { match, nextTempo, type Played } from '../eval/match'
 import { startMic } from '../eval/mic'
 import { connectMidi, type MidiNote } from '../eval/midiInput'
 import { fitRange } from '../model/notes'
 import { groupChords, measureAt, nextChord, timeRange, type Chord } from '../model/score'
 import type { Hand, MeasureRange, NoteEvent, Score } from '../model/types'
-import { getCalibration, saveAttempt } from '../storage/db'
+import { getCalibration, getPrefs, saveAttempt, savePrefs, type NamedSection } from '../storage/db'
 import { initialState, usePlayer } from '../store/usePlayer'
 
 const SOON_BEATS = 0.75
@@ -85,6 +85,8 @@ export class Engine {
   private takes: Played[] = [] // lo tocado en esta pasada
   private inputLatencySec = 0
   private stopMic: (() => void) | null = null
+  private cleanLoops = 0 // pasadas limpias seguidas, para la subida de tempo
+  private disposed = false
 
   constructor(private score: Score) {
     const [beats, unit] = score.timeSignature
@@ -110,9 +112,19 @@ export class Engine {
     if (midiDevices) void this.connectMidi() // reconecta las entradas a este motor
     if (mic !== 'off') void this.connectMic()
     this.publish(this.position())
+    void this.loadPrefs()
+  }
+
+  private async loadPrefs() {
+    const { tempoPct, range, sections } = await getPrefs(this.score.id)
+    if (this.disposed) return
+    this.setTempo(tempoPct)
+    if (range) this.setRange(range)
+    usePlayer.setState({ sections })
   }
 
   dispose() {
+    this.disposed = true
     this.stopMic?.()
     cancelAnimationFrame(this.raf)
     this.transport.stop()
@@ -182,11 +194,30 @@ export class Engine {
   setTempo(tempoPct: number) {
     this.transport.bpm.value = (this.score.bpm * tempoPct) / 100
     usePlayer.setState({ tempoPct })
+    void savePrefs(this.score.id, { tempoPct })
   }
 
   setRange(range: MeasureRange | null) {
     usePlayer.setState({ range })
     this.applyRange()
+    void savePrefs(this.score.id, { range })
+  }
+
+  /** Guarda el rango actual; un nombre repetido reemplaza a la sección anterior. */
+  saveSection(name: string) {
+    const { range, sections } = usePlayer.getState()
+    if (!range) return
+    const section = { ...range, name: name.trim() || `Compases ${range.from}–${range.to}` }
+    this.setSections([...sections.filter((s) => s.name !== section.name), section])
+  }
+
+  deleteSection(name: string) {
+    this.setSections(usePlayer.getState().sections.filter((s) => s.name !== name))
+  }
+
+  private setSections(sections: NamedSection[]) {
+    usePlayer.setState({ sections })
+    void savePrefs(this.score.id, { sections })
   }
 
   setRepeat(repeat: boolean) {
@@ -356,7 +387,7 @@ export class Engine {
 
   private evaluate() {
     if (this.takes.length === 0) return
-    const { hands, waitMode, tempoPct } = usePlayer.getState()
+    const { hands, waitMode, tempoPct, autoTempo } = usePlayer.getState()
     const expected = this.score.notes.filter(
       (n) => hands[n.hand] && n.time >= this.range.start && n.time < this.range.end,
     )
@@ -367,6 +398,11 @@ export class Engine {
     this.takes = []
     usePlayer.setState({ result })
     void saveAttempt(this.score.id, { date: new Date().toISOString(), tempoPct, result })
+    if (autoTempo) {
+      const next = nextTempo(this.cleanLoops, result, tempoPct)
+      this.cleanLoops = next.cleanLoops
+      if (next.tempoPct !== tempoPct) this.setTempo(next.tempoPct)
+    }
   }
 
   private publish(position: number) {

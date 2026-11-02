@@ -1,7 +1,7 @@
-import { del, entries, get, set } from 'idb-keyval'
+import { del, entries, get, set, update } from 'idb-keyval'
 import type { CalibrationProfile } from '../eval/calibrate'
 import type { Result } from '../eval/match'
-import type { Score } from '../model/types'
+import type { MeasureRange, Score } from '../model/types'
 
 export interface StoredScore {
   score: Score
@@ -15,8 +15,20 @@ export interface Attempt {
   result: Result
 }
 
+export interface NamedSection extends MeasureRange {
+  name: string
+}
+
+export interface ScorePrefs {
+  tempoPct: number
+  range: MeasureRange | null
+  sections: NamedSection[]
+}
+
 const SCORE = 'score:'
 const ATTEMPTS = 'attempts:'
+const PREFS = 'prefs:'
+const DEFAULT_PREFS: ScorePrefs = { tempoPct: 100, range: null, sections: [] }
 
 export async function listScores(): Promise<StoredScore[]> {
   const all = await entries<string, StoredScore>()
@@ -32,6 +44,7 @@ export const saveScore = (score: Score, file?: Blob) =>
 export async function deleteScore(id: string) {
   await del(SCORE + id)
   await del(ATTEMPTS + id)
+  await del(PREFS + id)
 }
 
 export const listAttempts = async (scoreId: string) => (await get<Attempt[]>(ATTEMPTS + scoreId)) ?? []
@@ -39,6 +52,14 @@ export const listAttempts = async (scoreId: string) => (await get<Attempt[]>(ATT
 export async function saveAttempt(scoreId: string, attempt: Attempt) {
   await set(ATTEMPTS + scoreId, [...(await listAttempts(scoreId)), attempt])
 }
+
+export const getPrefs = async (scoreId: string): Promise<ScorePrefs> => ({
+  ...DEFAULT_PREFS,
+  ...(await get<ScorePrefs>(PREFS + scoreId)),
+})
+
+export const savePrefs = (scoreId: string, prefs: Partial<ScorePrefs>) =>
+  update<ScorePrefs>(PREFS + scoreId, (old) => ({ ...DEFAULT_PREFS, ...old, ...prefs }))
 
 export const getCalibration = () => get<CalibrationProfile>('calibration')
 export const saveCalibration = (profile: CalibrationProfile) => set('calibration', profile)
