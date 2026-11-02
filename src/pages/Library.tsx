@@ -24,9 +24,10 @@ interface Row extends StoredScore {
 interface Props {
   onOpen: (score: Score, file?: Blob) => void
   onProgress: (score: Score) => void
+  onChordTest: () => void
 }
 
-export default function Library({ onOpen, onProgress }: Props) {
+export default function Library({ onOpen, onProgress, onChordTest }: Props) {
   const [rows, setRows] = useState<Row[]>([])
   const [collections, setCollections] = useState<Collection[]>([])
   const [added, setAdded] = useState<string | null>(null) // colección recién cargada: se muestra abierta
@@ -200,6 +201,16 @@ export default function Library({ onOpen, onProgress }: Props) {
           <button className="score-row" disabled={busy} onClick={() => void loadExample()}>
             <strong>Estudio a dos manos</strong>
             <small>MusicXML con partitura y repetición</small>
+          </button>
+        </li>
+      </ul>
+
+      <h2>Herramientas</h2>
+      <ul className="score-list">
+        <li>
+          <button className="score-row" onClick={onChordTest}>
+            <strong>Prueba de acordes</strong>
+            <small>Mide cuántos acordes distingue el micrófono en tu piano</small>
           </button>
         </li>
       </ul>

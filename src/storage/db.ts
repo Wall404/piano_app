@@ -1,5 +1,6 @@
 import { del, entries, get, set, update } from 'idb-keyval'
 import type { CalibrationProfile } from '../eval/calibrate'
+import type { ChordTestRecord } from '../eval/chordTest'
 import type { Result } from '../eval/match'
 import type { Collection, MeasureRange, Score } from '../model/types'
 
@@ -79,6 +80,9 @@ export const getPrefs = async (scoreId: string): Promise<ScorePrefs> => ({
 
 export const savePrefs = (scoreId: string, prefs: Partial<ScorePrefs>) =>
   update<ScorePrefs>(PREFS + scoreId, (old) => ({ ...DEFAULT_PREFS, ...old, ...prefs }))
+
+export const getChordTest = () => get<ChordTestRecord>('chordtest')
+export const saveChordTest = (record: ChordTestRecord) => set('chordtest', record)
 
 export const getCalibration = () => get<CalibrationProfile>('calibration')
 export const saveCalibration = (profile: CalibrationProfile) => set('calibration', profile)
