@@ -1,5 +1,9 @@
 import type { NoteEvent } from '../model/types'
 
+export const TEMPO_MAX = 150
+export const CLEAN_LOOPS = 3 // loops seguidos sin errores para subir el tempo
+const TEMPO_STEP = 5
+
 export interface Played {
   midi: number
   time: number // segundos a tempo original
@@ -57,10 +61,31 @@ export function match(expected: NoteEvent[], played: Played[], toleranceSec: num
 /** Sugiere repasar la ventana de 4 compases con más errores, más lento. */
 export function suggestion(result: Result, tempoPct: number, lastMeasure: number): string {
   const measures = Object.keys(result.errorsByMeasure).map(Number)
-  if (measures.length === 0) return tempoPct < 150 ? `Sin errores. Probá al ${tempoPct + 5} %.` : 'Sin errores.'
+  if (measures.length === 0) return tempoPct < TEMPO_MAX ? `Sin errores. Probá al ${tempoPct + TEMPO_STEP} %.` : 'Sin errores.'
   const inWindow = (from: number) =>
     measures.filter((m) => m >= from && m < from + 4).reduce((sum, m) => sum + result.errorsByMeasure[m], 0)
   const from = measures.reduce((a, b) => (inWindow(b) > inWindow(a) ? b : a))
   const pct = Math.max(25, Math.round((tempoPct * 0.8) / 5) * 5)
   return `Repetí los compases ${from} a ${Math.min(from + 3, lastMeasure)} al ${pct} %.`
+}
+
+/** Subida automática: cada CLEAN_LOOPS pasadas limpias seguidas, un paso más rápido. */
+export function nextTempo(cleanLoops: number, result: Result, tempoPct: number) {
+  if (result.missed > 0 || result.wrong > 0) return { cleanLoops: 0, tempoPct }
+  if (cleanLoops + 1 < CLEAN_LOOPS) return { cleanLoops: cleanLoops + 1, tempoPct }
+  return { cleanLoops: 0, tempoPct: Math.min(TEMPO_MAX, tempoPct + TEMPO_STEP) }
+}
+
+/** Compases con más errores sumando varias pasadas. */
+export function worstMeasures(results: Result[], top = 3) {
+  const totals = new Map<number, number>()
+  for (const r of results) {
+    for (const [measure, errors] of Object.entries(r.errorsByMeasure)) {
+      totals.set(Number(measure), (totals.get(Number(measure)) ?? 0) + errors)
+    }
+  }
+  return [...totals]
+    .map(([measure, errors]) => ({ measure, errors }))
+    .sort((a, b) => b.errors - a.errors || a.measure - b.measure)
+    .slice(0, top)
 }

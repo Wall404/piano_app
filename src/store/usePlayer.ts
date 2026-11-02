@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Result } from '../eval/match'
 import type { Hand, MeasureRange } from '../model/types'
+import type { NamedSection } from '../storage/db'
 
 export interface PlayerState {
   playing: boolean
@@ -8,6 +9,8 @@ export interface PlayerState {
   waiting: boolean // modo espera: detenido hasta que se toque el acorde
   tempoPct: number
   range: MeasureRange | null
+  sections: NamedSection[] // guardadas con nombre para esta partitura
+  autoTempo: boolean
   repeat: boolean
   sound: boolean
   metronome: boolean
@@ -36,6 +39,8 @@ export const initialState: PlayerState = {
   waiting: false,
   tempoPct: 100,
   range: null,
+  sections: [],
+  autoTempo: false,
   repeat: true,
   sound: true,
   metronome: false,

@@ -10,14 +10,21 @@ interface Row extends StoredScore {
   lastPct: number | null
 }
 
-export default function Library({ onOpen }: { onOpen: (score: Score, file?: Blob) => void }) {
+interface Props {
+  onOpen: (score: Score, file?: Blob) => void
+  onProgress: (score: Score) => void
+}
+
+export default function Library({ onOpen, onProgress }: Props) {
   const [rows, setRows] = useState<Row[]>([])
+  const [odeAttempted, setOdeAttempted] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const refresh = async () => {
     const scores = await listScores()
+    setOdeAttempted((await listAttempts(odeToJoy.id)).length > 0)
     setRows(
       await Promise.all(
         scores.map(async (s) => {
@@ -98,6 +105,7 @@ export default function Library({ onOpen }: { onOpen: (score: Score, file?: Blob
                 {lastPct !== null && ` · último intento ${lastPct} %`}
               </small>
             </button>
+            {lastPct !== null && <button className="chip" onClick={() => onProgress(score)}>Progreso</button>}
             <button
               className="icon-btn"
               aria-label={`Borrar ${score.title}`}
@@ -116,6 +124,7 @@ export default function Library({ onOpen }: { onOpen: (score: Score, file?: Blob
             <strong>{odeToJoy.title}</strong>
             <small>{odeToJoy.composer}</small>
           </button>
+          {odeAttempted && <button className="chip" onClick={() => onProgress(odeToJoy)}>Progreso</button>}
         </li>
         <li>
           <button className="score-row" disabled={busy} onClick={() => void loadExample()}>
