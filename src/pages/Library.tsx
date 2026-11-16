@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { odeToJoy } from '../data/odeToJoy'
-import { importFile } from '../import'
-import { importCollection } from '../import/collection'
+import { importAndSave } from '../import/collection'
 import { countMeasures, readXml } from '../import/xmlEdit'
 import type { Collection, Score } from '../model/types'
 import {
@@ -12,8 +11,6 @@ import {
   listScores,
   mergeWorks,
   renameScore,
-  saveCollection,
-  saveScore,
   splitWork,
   type StoredScore,
 } from '../storage/db'
@@ -28,10 +25,10 @@ interface Props {
   onOpen: (score: Score, file?: Blob) => void
   onProgress: (score: Score) => void
   onChordTest: () => void
-  onPdfPages: () => void
+  onPdf: (file: File) => void
 }
 
-export default function Library({ onOpen, onProgress, onChordTest, onPdfPages }: Props) {
+export default function Library({ onOpen, onProgress, onChordTest, onPdf }: Props) {
   const [rows, setRows] = useState<Row[]>([])
   const [collections, setCollections] = useState<Collection[]>([])
   const [added, setAdded] = useState<string | null>(null) // colección recién cargada: se muestra abierta
@@ -64,18 +61,15 @@ export default function Library({ onOpen, onProgress, onChordTest, onPdfPages }:
     setBusy(true)
     setError(null)
     try {
-      if (files.length > 1) {
-        const { collection, items } = await importCollection(files)
-        const stored = items.map(({ score, file }) => ({ score, file: score.source.kind === 'musicxml' ? file : undefined }))
-        await saveCollection(collection, stored)
-        setAdded(collection.id)
-        await refresh()
-        return
+      const pdf = files.find((f) => /\.pdf$/i.test(f.name))
+      if (pdf) {
+        if (files.length > 1) throw new Error('Cargá el PDF solo, sin otros archivos.')
+        return onPdf(pdf)
       }
-      const [file] = files
-      const score = await importFile(file)
-      await saveScore(score, score.source.kind === 'musicxml' ? file : undefined)
-      onOpen(score, score.source.kind === 'musicxml' ? file : undefined)
+      const saved = await importAndSave(files)
+      if (saved.score) return onOpen(saved.score, saved.score.source.kind === 'musicxml' ? files[0] : undefined)
+      setAdded(saved.collectionId!)
+      await refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo leer la partitura.')
     } finally {
@@ -210,12 +204,12 @@ export default function Library({ onOpen, onProgress, onChordTest, onPdfPages }:
 
       <button className="drop" disabled={busy} onClick={() => inputRef.current?.click()}>
         <strong>{busy ? 'Leyendo partitura…' : 'Cargar partitura'}</strong>
-        <span>MusicXML, MXL o MIDI. Varias a la vez forman una colección. En la compu también podés arrastrarlas acá.</span>
+        <span>PDF, MusicXML, MXL o MIDI. Varias a la vez forman una colección. En la compu también podés arrastrarlas acá.</span>
       </button>
       <input
         ref={inputRef}
         type="file"
-        accept=".musicxml,.xml,.mxl,.mid,.midi,.json"
+        accept=".pdf,.musicxml,.xml,.mxl,.mid,.midi,.json"
         multiple
         hidden
         onChange={(e) => {
@@ -275,12 +269,6 @@ export default function Library({ onOpen, onProgress, onChordTest, onPdfPages }:
           <button className="score-row" onClick={onChordTest}>
             <strong>Prueba de acordes</strong>
             <small>Mide cuántos acordes distingue el micrófono en tu piano</small>
-          </button>
-        </li>
-        <li>
-          <button className="score-row" onClick={onPdfPages}>
-            <strong>Marcar obras de un PDF</strong>
-            <small>Elegí dónde empieza cada obra de una colección</small>
           </button>
         </li>
       </ul>

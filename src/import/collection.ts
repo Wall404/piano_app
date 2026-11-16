@@ -1,5 +1,6 @@
 import type { Collection, Score } from '../model/types'
 import { importFile } from '.'
+import { saveCollection, saveScore } from '../storage/db'
 
 export const MANIFEST_RE = /\.coleccion\.json$/i
 
@@ -86,4 +87,18 @@ export function rangesFromStarts(starts: number[], pageCount: number) {
       return from === to ? String(from) : `${from}-${to}`
     })
     .join(',')
+}
+
+/** Lee y guarda archivos de partitura: uno solo queda suelto, varios forman una colección. */
+export async function importAndSave(files: File[]): Promise<{ score?: Score; collectionId?: string }> {
+  const keep = (score: Score, file: File) => (score.source.kind === 'musicxml' ? file : undefined)
+  if (files.length > 1) {
+    const { collection, items } = await importCollection(files)
+    await saveCollection(collection, items.map(({ score, file }) => ({ score, file: keep(score, file) })))
+    return { collectionId: collection.id }
+  }
+  const [file] = files
+  const score = await importFile(file)
+  await saveScore(score, keep(score, file))
+  return { score }
 }
