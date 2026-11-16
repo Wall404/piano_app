@@ -203,7 +203,7 @@ export default function Library({ onOpen, onProgress, onChordTest, onPdfPages }:
       <header className="brand">
         <span className="logo" aria-hidden="true" />
         <div>
-          <h1>Piano App</h1>
+          <h1>Práctica Piano</h1>
           <p>Tus partituras, en el teclado</p>
         </div>
       </header>

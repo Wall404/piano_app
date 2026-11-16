@@ -1,4 +1,4 @@
-# Piano App
+# Práctica Piano
 
 App web (mobile-first) para practicar piano: carga una partitura, muestra las notas cayendo
 sobre un teclado animado y resalta qué teclas tocar en cada nota o acorde.
