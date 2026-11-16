@@ -1,10 +1,10 @@
-# Piano APP — Spec y arquitectura
+# Práctica Piano — Spec y arquitectura
 
 30/10/2026 · Wally · Versión viva: [Claude Doc](https://claude.ai/artifact/3h9rki6Xc2L8HtagnUHzCP)
 
 ## Visión y objetivos
 
-Piano APP convierte una partitura (MusicXML o MIDI) en un teclado animado que muestra qué teclas tocar en cada nota o acorde, para practicar por secciones a tu tempo y, en una fase posterior, recibir una devolución escuchando por el micrófono.
+Práctica Piano convierte una partitura (MusicXML o MIDI) en un teclado animado que muestra qué teclas tocar en cada nota o acorde, para practicar por secciones a tu tempo y, en una fase posterior, recibir una devolución escuchando por el micrófono.
 
 - **Para quién:** pianistas principiantes e intermedios que leen poco o lento la partitura y aprenden mejor viendo las teclas.
 - **Dónde corre:** localmente en esta PC (navegador), con el código alojado en GitHub. Sin backend ni cuentas en la v1.

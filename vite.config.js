@@ -12,8 +12,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Piano App',
-        short_name: 'Piano',
+        name: 'Práctica Piano',
+        short_name: 'Práctica Piano',
         description: 'Practicá piano con tus partituras en un teclado animado.',
         theme_color: '#0b0f1e',
         background_color: '#0b0f1e',
