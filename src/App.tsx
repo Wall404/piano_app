@@ -3,6 +3,7 @@ import { Engine } from './engine/transport'
 import type { Score } from './model/types'
 import ChordTest from './pages/ChordTest'
 import Library from './pages/Library'
+import PdfPages from './pages/PdfPages'
 import Practice from './pages/Practice'
 import Results from './pages/Results'
 
@@ -16,7 +17,9 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null)
   const [progress, setProgress] = useState<Score | null>(null)
   const [chordTest, setChordTest] = useState(false)
+  const [pdfPages, setPdfPages] = useState(false)
 
+  if (pdfPages) return <PdfPages onBack={() => setPdfPages(false)} />
   if (chordTest) return <ChordTest onBack={() => setChordTest(false)} />
   if (progress) return <Results score={progress} onBack={() => setProgress(null)} />
   if (!session) {
@@ -25,6 +28,7 @@ export default function App() {
         onOpen={(score, file) => setSession({ score, file, engine: new Engine(score) })}
         onProgress={setProgress}
         onChordTest={() => setChordTest(true)}
+        onPdfPages={() => setPdfPages(true)}
       />
     )
   }

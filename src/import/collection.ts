@@ -76,3 +76,14 @@ export async function importCollection(files: File[]) {
   }
   return { collection, items }
 }
+
+/** Páginas donde empieza cada obra → rangos para `npm run pdf -- --paginas`. Ej.: [3, 1] en 5 páginas → "1-2,3-5". */
+export function rangesFromStarts(starts: number[], pageCount: number) {
+  const sorted = [...new Set([1, ...starts])].filter((p) => p >= 1 && p <= pageCount).sort((a, b) => a - b)
+  return sorted
+    .map((from, i) => {
+      const to = (sorted[i + 1] ?? pageCount + 1) - 1
+      return from === to ? String(from) : `${from}-${to}`
+    })
+    .join(',')
+}
