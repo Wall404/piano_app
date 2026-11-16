@@ -3,7 +3,7 @@
 App web (mobile-first) para practicar piano: carga una partitura, muestra las notas cayendo
 sobre un teclado animado y resalta qué teclas tocar en cada nota o acorde.
 
-Probala en https://wall404.github.io/piano_app/ (Chrome en Android o en la compu).
+Probala en https://wall404.github.io/practica-piano/ (Chrome en Android o en la compu).
 
 ## Qué hace hoy
 

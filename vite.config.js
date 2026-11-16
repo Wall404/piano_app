@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // En GitHub Pages la app vive en /<repo>/; en local, en la raíz.
-const base = process.env.GITHUB_PAGES ? `/${process.env.REPO_NAME ?? 'piano_app'}/` : '/'
+const base = process.env.GITHUB_PAGES ? `/${process.env.REPO_NAME ?? 'practica-piano'}/` : '/'
 
 export default defineConfig({
   base,

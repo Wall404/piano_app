@@ -25,6 +25,7 @@ jobs:
       - run: npm run build
         env:
           GITHUB_PAGES: '1'
+          REPO_NAME: ${{ github.event.repository.name }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

@@ -202,7 +202,7 @@ Un acorde son varios `NoteEvent` con el mismo `time`. El tempo de práctica no c
 ### Estructura de carpetas
 
 ```text
-piano_app/
+practica-piano/
   docs/SPEC.md
   public/samples/piano/    muestras del Sampler
   public/scores/           partituras de ejemplo
