@@ -17,9 +17,9 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null)
   const [progress, setProgress] = useState<Score | null>(null)
   const [chordTest, setChordTest] = useState(false)
-  const [pdfPages, setPdfPages] = useState(false)
+  const [pdf, setPdf] = useState<File | null>(null)
 
-  if (pdfPages) return <PdfPages onBack={() => setPdfPages(false)} />
+  if (pdf) return <PdfPages file={pdf} onBack={() => setPdf(null)} />
   if (chordTest) return <ChordTest onBack={() => setChordTest(false)} />
   if (progress) return <Results score={progress} onBack={() => setProgress(null)} />
   if (!session) {
@@ -28,7 +28,7 @@ export default function App() {
         onOpen={(score, file) => setSession({ score, file, engine: new Engine(score) })}
         onProgress={setProgress}
         onChordTest={() => setChordTest(true)}
-        onPdfPages={() => setPdfPages(true)}
+        onPdf={setPdf}
       />
     )
   }

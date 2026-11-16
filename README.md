@@ -24,19 +24,21 @@ Probala en https://wall404.github.io/practica-piano/ (Chrome en Android o en la 
 
 ## PDF a MusicXML
 
-Instalá [Audiveris](https://github.com/audiveris/audiveris) y corré `npm run pdf -- pieza.pdf`.
-El resultado queda en `scores/`, que no se sube al repo. El reconocimiento comete errores:
-revisá la partitura en la app y corregila en MuseScore si hace falta.
+Un PDF es una imagen: para practicarlo hay que leer sus notas, y eso lo hace
+[Audiveris](https://github.com/audiveris/audiveris) en la PC (instalalo una vez).
 
-Si el PDF trae varias obras, Audiveris las separa cuando puede y el script escribe
-`scores/pieza.coleccion.json`. Si no detecta los cortes, marcalos por páginas:
+Con la app abierta desde la PC (`npm run dev`), tocá «Cargar partitura» y elegí el PDF. Si trae
+varias obras, marcá la página donde empieza cada una y tocá «Convertir y agregar a la biblioteca»:
+quedan agrupadas como colección. Si varias obras comparten página, no marques nada y separalas
+después con ✎. El reconocimiento comete errores: revisá la partitura en la app.
+
+Sin la app local, el mismo paso se hace a mano y deja los archivos en `scores/` (no se sube al repo):
 
 ```bash
-npm run pdf -- pieza.pdf --paginas 1-2,3-5
+npm run pdf -- pieza.pdf --paginas 1-2,3-5   # o --coleccion para que Audiveris busque los cortes
 ```
 
-Después cargá en la app el `.coleccion.json` junto con sus `.mxl`: aparecen agrupados en la
-Biblioteca, en orden y con su título. También podés cargar varias partituras juntas sin el `.json`.
+Después cargá juntos el `.coleccion.json` y sus `.mxl`.
 
 ## Requisitos
 

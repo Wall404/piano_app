@@ -1,20 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-import { rangesFromStarts } from '../import/collection'
+import { importAndSave, rangesFromStarts } from '../import/collection'
 
 const THUMB_PX = 120
+// Solo existe cuando la app corre en la PC (npm run dev): ver pdfHelper en vite.config.js.
+const CAN_CONVERT = import.meta.env.DEV
 
-/** Miniaturas de un PDF para marcar dónde empieza cada obra; arma el comando de `npm run pdf`. */
-export default function PdfPages({ onBack }: { onBack: () => void }) {
-  const [file, setFile] = useState<File | null>(null)
+/** Pasos guiados para convertir un PDF (una obra o varias) en partituras de la biblioteca. */
+export default function PdfPages({ file, onBack }: { file: File; onBack: () => void }) {
   const [pageCount, setPageCount] = useState(0)
   const [starts, setStarts] = useState<number[]>([1])
   const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
   const canvases = useRef<(HTMLCanvasElement | null)[]>([])
 
   useEffect(() => {
-    if (!file) return
     let cancelled = false
     let destroy = () => {}
     void (async () => {
@@ -53,9 +54,31 @@ export default function PdfPages({ onBack }: { onBack: () => void }) {
     setStarts((s) => (s.includes(page) ? s.filter((p) => p !== page) : [...s, page]))
   }
 
+  const marked = starts.length > 1
   const ranges = rangesFromStarts(starts, pageCount)
-  const name = file && (/\s/.test(file.name) ? `"${file.name}"` : file.name)
-  const command = `npm run pdf -- ${name} --paginas ${ranges}`
+  const name = /\s/.test(file.name) ? `"${file.name}"` : file.name
+  const command = `npm run pdf -- ${name} ${marked ? `--paginas ${ranges}` : '--coleccion'}`
+
+  const convert = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      const query = new URLSearchParams({ name: file.name, ...(marked ? { paginas: ranges } : {}) })
+      const response = await fetch(`${import.meta.env.BASE_URL}api/pdf?${query}`, { method: 'POST', body: file })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error ?? 'La PC no pudo convertir el PDF.')
+      const files = (data.files as { name: string; data: string }[]).map(
+        (f) => new File([Uint8Array.from(atob(f.data), (c) => c.charCodeAt(0))], f.name),
+      )
+      // Una sola obra queda suelta, sin el .coleccion.json.
+      const works = files.filter((f) => !f.name.endsWith('.json'))
+      await importAndSave(works.length === 1 ? works : files)
+      onBack()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'La PC no pudo convertir el PDF.')
+      setBusy(false)
+    }
+  }
 
   const copy = async () => {
     try {
@@ -71,55 +94,63 @@ export default function PdfPages({ onBack }: { onBack: () => void }) {
       <header className="brand">
         <button className="icon-btn back" onClick={onBack} aria-label="Volver a la biblioteca">←</button>
         <div>
-          <h1>Marcar obras de un PDF</h1>
-          <p>{pageCount ? `${pageCount} páginas · ${starts.filter((p) => p <= pageCount).length} obras` : 'Tocá la página donde empieza cada obra'}</p>
+          <h1>Convertir un PDF</h1>
+          <p>{file.name}</p>
         </div>
       </header>
+      <p className="empty">
+        Un PDF es una foto de la partitura. Para mostrarla en el teclado, la app tiene que leer las notas, y eso lo hace la PC.
+      </p>
 
-      <label className="drop">
-        <strong>{file ? file.name : 'Elegir PDF'}</strong>
-        <span>El PDF no se sube: las miniaturas se arman en este dispositivo.</span>
-        <input
-          type="file"
-          accept=".pdf,application/pdf"
-          hidden
-          onChange={(e) => {
-            const picked = e.target.files?.[0]
-            e.target.value = ''
-            if (!picked) return
-            setError(null)
-            setCopied(false)
-            setPageCount(0)
-            setStarts([1])
-            setFile(picked)
-          }}
-        />
-      </label>
-      {error && <p className="midi-error" role="alert">{error}</p>}
-
+      <h2>1 · ¿Dónde empieza cada obra?</h2>
+      <p className="empty">
+        Si el PDF trae varias obras, tocá la primera página de cada una. Si es una sola, o si varias comparten página (como
+        estudios cortos), no marques nada: la PC intenta separarlas y después podés ajustar con ✎ en la biblioteca.
+      </p>
       {pageCount > 0 && (
-        <>
-          <h2>Comando para la PC</h2>
-          <pre className="chord-report">{command}</pre>
-          <button className="midi-btn" onClick={() => void copy()}>{copied ? 'Copiado' : 'Copiar'}</button>
-
-          <h2>Páginas</h2>
-          <ul className="pdf-pages">
-            {Array.from({ length: pageCount }, (_, i) => {
-              const page = i + 1
-              const start = starts.includes(page)
-              return (
-                <li key={page}>
-                  <button className={start ? 'sel' : ''} aria-pressed={start} disabled={page === 1} onClick={() => toggle(page)}>
-                    <canvas ref={(el) => void (canvases.current[i] = el)} />
-                    {page}{start && ' · empieza una obra'}
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </>
+        <ul className="pdf-pages">
+          {Array.from({ length: pageCount }, (_, i) => {
+            const page = i + 1
+            const start = marked && starts.includes(page)
+            return (
+              <li key={page}>
+                <button className={start ? 'sel' : ''} aria-pressed={start} disabled={page === 1} onClick={() => toggle(page)}>
+                  <canvas ref={(el) => void (canvases.current[i] = el)} />
+                  {page}{start && ' · empieza una obra'}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
       )}
+
+      <section className="pdf-convert">
+        <h2>2 · Convertir</h2>
+        <p className="empty">
+          {pageCount ? `${pageCount} páginas · ` : ''}
+          {marked ? `${starts.length} obras marcadas` : 'sin marcas: la PC detecta las obras'}
+        </p>
+        {error && <p className="midi-error" role="alert">{error}</p>}
+        {CAN_CONVERT ? (
+          <button className="midi-btn primary" disabled={busy || !pageCount} onClick={() => void convert()}>
+            {busy ? 'Convirtiendo… puede tardar unos minutos' : 'Convertir y agregar a la biblioteca'}
+          </button>
+        ) : (
+          <>
+            <p className="empty">
+              Este paso no se puede hacer desde el celular. Abrí la app en la PC (la versión local) y cargá este mismo PDF: vas
+              a ver el botón «Convertir».
+            </p>
+            <details>
+              <summary>Convertir a mano en la PC</summary>
+              <p className="empty">En la carpeta de la app, con Audiveris instalado:</p>
+              <pre className="chord-report">{command}</pre>
+              <button className="midi-btn" onClick={() => void copy()}>{copied ? 'Copiado' : 'Copiar'}</button>
+              <p className="empty">Después cargá juntos los archivos de la carpeta scores: el .coleccion.json y sus .mxl.</p>
+            </details>
+          </>
+        )}
+      </section>
     </div>
   )
 }

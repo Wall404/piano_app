@@ -318,6 +318,10 @@ input[type='range']::-moz-range-thumb {
   background: var(--panel); border: 1px solid var(--panel-border);
 }
 .pdf-pages canvas { width: 100%; height: auto; border-radius: 6px; background: #fff; }
+.pdf-convert { display: grid; gap: 10px; }
+.pdf-convert summary { cursor: pointer; color: var(--text-dim); font-size: 0.85rem; }
+.pdf-convert details[open] { display: grid; gap: 8px; }
+.midi-btn.primary { border: 0; color: #061026; font-weight: 600; background: linear-gradient(135deg, var(--right), var(--left)); }
 .pdf-pages button.sel { color: #ffe7a3; border-color: rgba(255, 214, 102, 0.55); background: rgba(255, 214, 102, 0.14); }
 .chord-report {
   margin: 0; padding: 12px; overflow-x: auto; border-radius: 12px; font: inherit; font-size: 0.8rem; line-height: 1.5;
