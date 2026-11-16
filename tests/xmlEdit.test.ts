@@ -44,6 +44,19 @@ describe('separar obras', () => {
     expect([...attrs.children].map((e) => e.tagName)).toEqual(['divisions', 'key', 'time', 'staves', 'clef', 'clef'])
   })
 
+  it('pasa el tempo vigente a la segunda, solo en la primera parte', () => {
+    const tempo = '<direction placement="above"><direction-type><words/></direction-type><sound tempo="90"/></direction>'
+    const xml = XML.replace(`<measure number="2">`, `<measure number="2">${tempo}`)
+    const [, b] = splitXml(xml, 3)
+    const [p1, p2] = doc(b).querySelectorAll('part')
+    const head = p1.querySelector('measure')!
+    expect([...head.children].map((e) => e.tagName).slice(0, 2)).toEqual(['attributes', 'direction'])
+    expect(head.querySelector('sound')!.getAttribute('tempo')).toBe('90')
+    expect(p2.querySelector('sound')).toBeNull()
+    // Si el compás de corte ya trae tempo, no se agrega otro.
+    expect(doc(splitXml(xml, 2)[1]).querySelectorAll('sound').length).toBe(1)
+  })
+
   it('rechaza compases fuera de rango', () => {
     for (const bad of [1, 5, 2.5]) expect(() => splitXml(XML, bad)).toThrow('entre 2 y 4')
   })

@@ -55,13 +55,15 @@ export function splitXml(xml: string, from: number): [string, string] {
   for (const part of partsOf(first)) measuresOf(part).slice(from - 1).forEach((m) => m.remove())
 
   const second = parse(xml)
-  for (const part of partsOf(second)) {
+  partsOf(second).forEach((part, p) => {
     const measures = measuresOf(part)
     const carried = new Map<string, Element>()
+    let tempo: string | null = null
     for (const m of measures.slice(0, from - 1)) {
       for (const attrs of m.getElementsByTagName('attributes')) {
         for (const el of attrs.children) if (ORDER.includes(el.tagName)) carried.set(slot(el), el)
       }
+      for (const sound of m.querySelectorAll('sound[tempo]')) tempo = sound.getAttribute('tempo')
       m.remove()
     }
     const head = measures[from - 1]
@@ -74,7 +76,20 @@ export function splitXml(xml: string, from: number): [string, string] {
     for (const [key, el] of carried) if (!declared.has(key)) attrs.appendChild(el.cloneNode(true))
     const rank = (el: Element) => (ORDER.includes(el.tagName) ? ORDER.indexOf(el.tagName) : ORDER.length)
     for (const el of [...attrs.children].sort((x, y) => rank(x) - rank(y))) attrs.appendChild(el) // sort es estable
+    // El tempo vigente, solo en la primera parte para no duplicarlo.
+    if (p === 0 && tempo && !head.querySelector('sound[tempo]')) {
+      const el = (tag: string, ...children: Element[]) => {
+        const node = second.createElement(tag)
+        node.append(...children)
+        return node
+      }
+      const sound = el('sound')
+      sound.setAttribute('tempo', tempo)
+      const direction = el('direction', el('direction-type', el('words')), sound)
+      direction.setAttribute('placement', 'above')
+      attrs.after(direction)
+    }
     renumber(part)
-  }
+  })
   return [serialize(first), serialize(second)]
 }
