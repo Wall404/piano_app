@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { odeToJoy } from '../data/odeToJoy'
 import { importFile } from '../import'
 import { importCollection } from '../import/collection'
+import { countMeasures, readXml } from '../import/xmlEdit'
 import type { Collection, Score } from '../model/types'
 import {
   deleteCollection,
@@ -9,9 +10,11 @@ import {
   listAttempts,
   listCollections,
   listScores,
+  mergeWorks,
   renameScore,
   saveCollection,
   saveScore,
+  splitWork,
   type StoredScore,
 } from '../storage/db'
 
@@ -25,14 +28,15 @@ interface Props {
   onOpen: (score: Score, file?: Blob) => void
   onProgress: (score: Score) => void
   onChordTest: () => void
+  onPdfPages: () => void
 }
 
-export default function Library({ onOpen, onProgress, onChordTest }: Props) {
+export default function Library({ onOpen, onProgress, onChordTest, onPdfPages }: Props) {
   const [rows, setRows] = useState<Row[]>([])
   const [collections, setCollections] = useState<Collection[]>([])
   const [added, setAdded] = useState<string | null>(null) // colección recién cargada: se muestra abierta
-  const [renaming, setRenaming] = useState<string | null>(null)
-  const [confirming, setConfirming] = useState<string | null>(null) // borrar una colección pide un segundo toque
+  const [editing, setEditing] = useState<{ id: string; measures: number } | null>(null) // obra de colección abierta para editar
+  const [confirming, setConfirming] = useState<string | null>(null) // borrar una colección o unir obras pide un segundo toque
   const [odeAttempted, setOdeAttempted] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -84,27 +88,87 @@ export default function Library({ onOpen, onProgress, onChordTest }: Props) {
     await load([new File([await response.blob()], EXAMPLE)])
   }
 
-  const scoreRow = ({ score, file, lastPct }: Row, inCollection: boolean) => (
+  const edit = async (score: Score, file?: Blob) => {
+    setConfirming(null)
+    setEditing({ id: score.id, measures: 0 })
+    if (!file) return
+    try {
+      const measures = countMeasures(await readXml(file, score.source.fileName))
+      setEditing((e) => (e?.id === score.id ? { ...e, measures } : e))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo leer la partitura.')
+    }
+  }
+
+  const run = async (task: () => Promise<void>) => {
+    setBusy(true)
+    setError(null)
+    try {
+      await task()
+      setEditing(null)
+      await refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo editar la colección.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const scoreRow = ({ score, file, lastPct }: Row, collection?: Collection, index = 0) => (
     <li key={score.id}>
-      {renaming === score.id ? (
-        <form
-          className="rename"
-          onSubmit={(e) => {
-            e.preventDefault()
-            const title = new FormData(e.currentTarget).get('title')?.toString().trim()
-            setRenaming(null)
-            if (title) void renameScore(score.id, title).then(refresh)
-          }}
-        >
-          <input
-            name="title"
-            defaultValue={score.title}
-            autoFocus
-            aria-label={`Nuevo nombre de ${score.title}`}
-            onKeyDown={(e) => e.key === 'Escape' && setRenaming(null)}
-          />
-          <button className="chip">Guardar</button>
-        </form>
+      {collection && editing?.id === score.id ? (
+        <div className="edit-work">
+          <div className="rename">
+            <form
+              className="rename"
+              onSubmit={(e) => {
+                e.preventDefault()
+                const title = new FormData(e.currentTarget).get('title')?.toString().trim()
+                setEditing(null)
+                if (title) void renameScore(score.id, title).then(refresh)
+              }}
+            >
+              <input
+                name="title"
+                defaultValue={score.title}
+                autoFocus
+                aria-label={`Nuevo nombre de ${score.title}`}
+                onKeyDown={(e) => e.key === 'Escape' && setEditing(null)}
+              />
+              <button className="chip">Guardar</button>
+            </form>
+            <button className="icon-btn" aria-label="Cerrar edición" onClick={() => setEditing(null)}>×</button>
+          </div>
+          {file && index < collection.scoreIds.length - 1 && (
+            <button
+              className="midi-btn"
+              disabled={busy}
+              onClick={() => {
+                if (confirming !== `merge:${score.id}`) return setConfirming(`merge:${score.id}`)
+                setConfirming(null)
+                void run(() => mergeWorks(collection, index))
+              }}
+            >
+              {confirming === `merge:${score.id}` ? 'Tocá de nuevo: se pierde el historial de la siguiente' : 'Unir con la siguiente'}
+            </button>
+          )}
+          {file && editing.measures > 1 && (
+            <form
+              className="rename"
+              onSubmit={(e) => {
+                e.preventDefault()
+                const from = Number(new FormData(e.currentTarget).get('from'))
+                void run(() => splitWork(collection, index, from))
+              }}
+            >
+              <label className="chip range">
+                Separar desde el compás
+                <input name="from" type="number" min={2} max={editing.measures} defaultValue={2} required />
+              </label>
+              <button className="chip" disabled={busy}>Separar</button>
+            </form>
+          )}
+        </div>
       ) : (
         <>
           <button className="score-row" onClick={() => onOpen(score, file)}>
@@ -116,8 +180,8 @@ export default function Library({ onOpen, onProgress, onChordTest }: Props) {
             </small>
           </button>
           {lastPct !== null && <button className="chip" onClick={() => onProgress(score)}>Progreso</button>}
-          {inCollection ? (
-            <button className="icon-btn" aria-label={`Renombrar ${score.title}`} onClick={() => setRenaming(score.id)}>✎</button>
+          {collection ? (
+            <button className="icon-btn" aria-label={`Editar ${score.title}`} onClick={() => void edit(score, file)}>✎</button>
           ) : (
             <button className="icon-btn" aria-label={`Borrar ${score.title}`} onClick={() => void deleteScore(score.id).then(refresh)}>×</button>
           )}
@@ -170,9 +234,9 @@ export default function Library({ onOpen, onProgress, onChordTest }: Props) {
           <details key={c.id} className="collection" open={c.id === added}>
             <summary>
               <strong>{c.title}</strong>
-              <small>{c.scoreIds.length} obras</small>
+              <small>{c.scoreIds.length} {c.scoreIds.length === 1 ? 'obra' : 'obras'}</small>
             </summary>
-            <ul className="score-list">{works.map((r) => scoreRow(r, true))}</ul>
+            <ul className="score-list">{works.map((r) => scoreRow(r, c, c.scoreIds.indexOf(r.score.id)))}</ul>
             <button
               className="midi-btn"
               onClick={() => {
@@ -186,7 +250,7 @@ export default function Library({ onOpen, onProgress, onChordTest }: Props) {
           </details>
         )
       })}
-      <ul className="score-list">{rows.filter((r) => !r.score.collectionId).map((r) => scoreRow(r, false))}</ul>
+      <ul className="score-list">{rows.filter((r) => !r.score.collectionId).map((r) => scoreRow(r))}</ul>
 
       <h2>Ejemplos</h2>
       <ul className="score-list">
@@ -211,6 +275,12 @@ export default function Library({ onOpen, onProgress, onChordTest }: Props) {
           <button className="score-row" onClick={onChordTest}>
             <strong>Prueba de acordes</strong>
             <small>Mide cuántos acordes distingue el micrófono en tu piano</small>
+          </button>
+        </li>
+        <li>
+          <button className="score-row" onClick={onPdfPages}>
+            <strong>Marcar obras de un PDF</strong>
+            <small>Elegí dónde empieza cada obra de una colección</small>
           </button>
         </li>
       </ul>

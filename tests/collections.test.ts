@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { exportedFiles, fallbackTitle, parseRanges, sheetsArg, titleFromXml, workFileName } from '../scripts/collection.mjs'
-import { commonTitle, parseManifest, planCollection } from '../src/import/collection'
+import { commonTitle, parseManifest, planCollection, rangesFromStarts } from '../src/import/collection'
 
 describe('script de PDF', () => {
   it('lee rangos de páginas y páginas sueltas', () => {
@@ -49,5 +49,12 @@ describe('colecciones en la app', () => {
     expect(() => planCollection(['a.mxl'], manifest)).toThrow('b.mxl')
     expect(() => parseManifest('{')).toThrow()
     expect(() => parseManifest('{"title":"C"}')).toThrow()
+  })
+
+  it('arma los rangos de páginas desde las miniaturas marcadas', () => {
+    expect(rangesFromStarts([3, 1], 5)).toBe('1-2,3-5')
+    expect(rangesFromStarts([], 1)).toBe('1')
+    expect(rangesFromStarts([4, 4, 9, 0, 2], 4)).toBe('1,2-3,4')
+    expect(parseRanges(rangesFromStarts([5, 3], 7))).toEqual([{ from: 1, to: 2 }, { from: 3, to: 4 }, { from: 5, to: 7 }])
   })
 })
