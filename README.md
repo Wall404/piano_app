@@ -27,18 +27,15 @@ Probala en https://wall404.github.io/practica-piano/ (Chrome en Android o en la 
 Un PDF es una imagen: para practicarlo hay que leer sus notas, y eso lo hace
 [Audiveris](https://github.com/audiveris/audiveris) en la PC (instalalo una vez).
 
-Con la app abierta desde la PC (`npm run dev`), tocá «Cargar partitura» y elegí el PDF. Si trae
-varias obras, marcá la página donde empieza cada una y tocá «Convertir y agregar a la biblioteca»:
-quedan agrupadas como colección. Si varias obras comparten página, no marques nada y separalas
-después con ✎. El reconocimiento comete errores: revisá la partitura en la app.
+En la PC, abrí la app local con el ícono «Práctica Piano» del menú de aplicaciones
+(`scripts/abrir.sh`: se actualiza, arranca `npm run dev` y abre el navegador). Tocá «Cargar
+partitura», elegí el PDF y, si trae varias obras, marcá la página donde empieza cada una. Después
+«Convertir y agregar a la biblioteca». Si varias obras comparten página, no marques nada y separalas
+con ✎. El reconocimiento comete errores: revisá la partitura en la app.
 
-Sin la app local, el mismo paso se hace a mano y deja los archivos en `scores/` (no se sube al repo):
-
-```bash
-npm run pdf -- pieza.pdf --paginas 1-2,3-5   # o --coleccion para que Audiveris busque los cortes
-```
-
-Después cargá juntos el `.coleccion.json` y sus `.mxl`.
+Audiveris puede estar instalado normal o desde Flathub (`flatpak install --user flathub
+org.audiveris.audiveris`, sin contraseña). A mano: `npm run pdf -- pieza.pdf --paginas 1-2,3-5`
+deja los archivos en `scores/`.
 
 ## Requisitos
 

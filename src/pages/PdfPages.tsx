@@ -12,7 +12,6 @@ export default function PdfPages({ file, onBack }: { file: File; onBack: () => v
   const [starts, setStarts] = useState<number[]>([1])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [copied, setCopied] = useState(false)
   const canvases = useRef<(HTMLCanvasElement | null)[]>([])
 
   useEffect(() => {
@@ -50,14 +49,11 @@ export default function PdfPages({ file, onBack }: { file: File; onBack: () => v
 
   const toggle = (page: number) => {
     if (page === 1) return
-    setCopied(false)
     setStarts((s) => (s.includes(page) ? s.filter((p) => p !== page) : [...s, page]))
   }
 
   const marked = starts.length > 1
   const ranges = rangesFromStarts(starts, pageCount)
-  const name = /\s/.test(file.name) ? `"${file.name}"` : file.name
-  const command = `npm run pdf -- ${name} ${marked ? `--paginas ${ranges}` : '--coleccion'}`
 
   const convert = async () => {
     setBusy(true)
@@ -77,15 +73,6 @@ export default function PdfPages({ file, onBack }: { file: File; onBack: () => v
     } catch (err) {
       setError(err instanceof Error ? err.message : 'La PC no pudo convertir el PDF.')
       setBusy(false)
-    }
-  }
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(command)
-      setCopied(true)
-    } catch {
-      setError('No se pudo copiar: seleccioná el comando a mano.')
     }
   }
 
@@ -136,19 +123,10 @@ export default function PdfPages({ file, onBack }: { file: File; onBack: () => v
             {busy ? 'Convirtiendo… puede tardar unos minutos' : 'Convertir y agregar a la biblioteca'}
           </button>
         ) : (
-          <>
-            <p className="empty">
-              Este paso no se puede hacer desde el celular. Abrí la app en la PC (la versión local) y cargá este mismo PDF: vas
-              a ver el botón «Convertir».
-            </p>
-            <details>
-              <summary>Convertir a mano en la PC</summary>
-              <p className="empty">En la carpeta de la app, con Audiveris instalado:</p>
-              <pre className="chord-report">{command}</pre>
-              <button className="midi-btn" onClick={() => void copy()}>{copied ? 'Copiado' : 'Copiar'}</button>
-              <p className="empty">Después cargá juntos los archivos de la carpeta scores: el .coleccion.json y sus .mxl.</p>
-            </details>
-          </>
+          <p className="empty">
+            El celular no puede leer las notas de un PDF. En la PC, abrí «Práctica Piano» desde el menú de aplicaciones,
+            cargá este mismo PDF y tocá «Convertir».
+          </p>
         )}
       </section>
     </div>
