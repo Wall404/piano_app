@@ -17,6 +17,7 @@ describe('script de PDF', () => {
     const names = ['pieza.mvt10.mxl', 'pieza.mvt2.mxl', 'pieza.mvt1.mxl', 'otra.mxl', 'pieza2.mxl', 'pieza.omr']
     expect(exportedFiles(names, 'pieza')).toEqual(['pieza.mvt1.mxl', 'pieza.mvt2.mxl', 'pieza.mvt10.mxl'])
     expect(exportedFiles(['pieza.mxl'], 'pieza')).toEqual(['pieza.mxl'])
+    expect(exportedFiles(['pieza.mvtnull.mxl', 'pieza.omr'], 'pieza')).toEqual(['pieza.mvtnull.mxl'])
   })
 
   it('nombra obras y títulos', () => {

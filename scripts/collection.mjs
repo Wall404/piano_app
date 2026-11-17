@@ -21,8 +21,9 @@ export function exportedFiles(names, radix) {
     if (!name.startsWith(radix)) return null
     const rest = name.slice(radix.length)
     if (rest === '.mxl') return 0
-    const match = /^\.mvt(\d+)\.mxl$/.exec(rest)
-    return match ? Number(match[1]) : null
+    // «mvtnull»: Audiveris no numeró el movimiento (pasa al exportar salteando páginas inválidas).
+    const match = /^\.mvt(\d+|null)\.mxl$/.exec(rest)
+    return match ? Number(match[1]) || 0 : null
   }
   return names.filter((n) => movement(n) !== null).sort((a, b) => movement(a) - movement(b))
 }

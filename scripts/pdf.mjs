@@ -1,6 +1,6 @@
 // Convierte un PDF a MusicXML con Audiveris: npm run pdf -- pieza.pdf [--coleccion] [--paginas 1-2,3-5]
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { parseArgs } from 'node:util'
 import { exportedFiles, fallbackTitle, parseRanges, sheetsArg, titleFromXml, workFileName } from './collection.mjs'
@@ -13,14 +13,23 @@ function fail(message) {
   process.exit(1)
 }
 
-function audiveris(pdf, output, sheets) {
-  // -sheets toma todo lo que le sigue, así que va antes de otra opción.
-  const args = ['-batch', '-transcribe', '-export', ...(sheets ? ['-sheets', sheets] : []), '-output', `${output}/`, pdf]
+function runAudiveris(args) {
   let run = spawnSync('audiveris', args, { stdio: 'inherit' })
   // Instalado desde Flathub (no pide contraseña); solo ve ~/Documentos, donde está la app.
   if (run.error) run = spawnSync('flatpak', ['run', 'org.audiveris.audiveris', ...args], { stdio: 'inherit' })
   if (run.error) fail('No se encontró Audiveris: https://github.com/audiveris/audiveris')
-  if (run.status) process.exit(run.status)
+  return run.status
+}
+
+function audiveris(pdf, output, sheets) {
+  // -sheets toma todo lo que le sigue, así que va antes de otra opción.
+  const sheetsOpt = sheets ? ['-sheets', sheets] : []
+  const status = runAudiveris(['-batch', '-transcribe', '-export', ...sheetsOpt, '-output', `${output}/`, pdf])
+  if (!status) return
+  // Una página sin pentagramas (portada, índice) corta la exportación de todo el libro, pero el .omr
+  // guardado ya la tiene marcada como inválida: exportar desde ahí saltea esa página.
+  const omr = join(output, `${basename(pdf).replace(/\.pdf$/i, '')}.omr`)
+  if (!existsSync(omr) || runAudiveris(['-batch', '-export', ...sheetsOpt, '-output', `${output}/`, omr])) process.exit(status)
 }
 
 /** Audiveris puede dejar los archivos en una subcarpeta por libro. */
