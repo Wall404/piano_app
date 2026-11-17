@@ -3,8 +3,16 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { importAndSave, rangesFromStarts } from '../import/collection'
 
 const THUMB_PX = 120
-// Solo existe cuando la app corre en la PC (npm run dev): ver pdfHelper en vite.config.js.
-const CAN_CONVERT = import.meta.env.DEV
+// Lo atiende la app local de la PC (npm run dev, ícono «Práctica Piano»): ver pdfHelper en vite.config.js.
+const HELPER = import.meta.env.DEV ? `${import.meta.env.BASE_URL}api/pdf` : 'http://localhost:5173/api/pdf'
+
+async function helperOpen() {
+  try {
+    return (await fetch(HELPER, { signal: AbortSignal.timeout(3000) })).ok
+  } catch {
+    return false
+  }
+}
 
 /** Pasos guiados para convertir un PDF (una obra o varias) en partituras de la biblioteca. */
 export default function PdfPages({ file, onBack }: { file: File; onBack: () => void }) {
@@ -12,6 +20,16 @@ export default function PdfPages({ file, onBack }: { file: File; onBack: () => v
   const [starts, setStarts] = useState<number[]>([1])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [canConvert, setCanConvert] = useState<boolean | null>(null) // null: buscando la app de la PC
+  const [touch] = useState(() => matchMedia('(pointer: coarse)').matches) // celular: no hay PC que buscar
+
+  const findHelper = () => {
+    setCanConvert(null)
+    void helperOpen().then(setCanConvert)
+  }
+  useEffect(() => {
+    if (!touch) findHelper()
+  }, [])
   const canvases = useRef<(HTMLCanvasElement | null)[]>([])
 
   useEffect(() => {
@@ -60,7 +78,7 @@ export default function PdfPages({ file, onBack }: { file: File; onBack: () => v
     setError(null)
     try {
       const query = new URLSearchParams({ name: file.name, ...(marked ? { paginas: ranges } : {}) })
-      const response = await fetch(`${import.meta.env.BASE_URL}api/pdf?${query}`, { method: 'POST', body: file })
+      const response = await fetch(`${HELPER}?${query}`, { method: 'POST', body: file })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error ?? 'La PC no pudo convertir el PDF.')
       const files = (data.files as { name: string; data: string }[]).map(
@@ -118,15 +136,26 @@ export default function PdfPages({ file, onBack }: { file: File; onBack: () => v
           {marked ? `${starts.length} obras marcadas` : 'sin marcas: la PC detecta las obras'}
         </p>
         {error && <p className="midi-error" role="alert">{error}</p>}
-        {CAN_CONVERT ? (
-          <button className="midi-btn primary" disabled={busy || !pageCount} onClick={() => void convert()}>
-            {busy ? 'Convirtiendo… puede tardar unos minutos' : 'Convertir y agregar a la biblioteca'}
-          </button>
-        ) : (
+        {touch ? (
           <p className="empty">
-            El celular no puede leer las notas de un PDF. En la PC, abrí «Práctica Piano» desde el menú de aplicaciones,
-            cargá este mismo PDF y tocá «Convertir».
+            El celular no puede leer las notas de un PDF: abrí esta misma página en la PC, cargá el PDF y tocá «Convertir».
           </p>
+        ) : (
+          <>
+            <button className="midi-btn primary" disabled={busy || !pageCount || !canConvert} onClick={() => void convert()}>
+              {busy ? 'Convirtiendo… puede tardar unos minutos' : 'Convertir y agregar a la biblioteca'}
+            </button>
+            {canConvert === false && (
+              <>
+                <p className="empty">
+                  Para convertir, la PC necesita su ayudante abierto: abrí el ícono «Práctica Piano» del menú de aplicaciones
+                  (se abre otra pestaña, podés dejarla) y después tocá «Buscar de nuevo».
+                </p>
+                <button className="midi-btn" onClick={findHelper}>Buscar de nuevo</button>
+              </>
+            )}
+            {canConvert === null && <p className="empty">Buscando el ayudante de la PC…</p>}
+          </>
         )}
       </section>
     </div>
