@@ -16,7 +16,9 @@ function fail(message) {
 function audiveris(pdf, output, sheets) {
   // -sheets toma todo lo que le sigue, así que va antes de otra opción.
   const args = ['-batch', '-transcribe', '-export', ...(sheets ? ['-sheets', sheets] : []), '-output', `${output}/`, pdf]
-  const run = spawnSync('audiveris', args, { stdio: 'inherit' })
+  let run = spawnSync('audiveris', args, { stdio: 'inherit' })
+  // Instalado desde Flathub (no pide contraseña); solo ve ~/Documentos, donde está la app.
+  if (run.error) run = spawnSync('flatpak', ['run', 'org.audiveris.audiveris', ...args], { stdio: 'inherit' })
   if (run.error) fail('No se encontró Audiveris: https://github.com/audiveris/audiveris')
   if (run.status) process.exit(run.status)
 }

@@ -2,8 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { spawn } from 'node:child_process'
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 
 // En GitHub Pages la app vive en /<repo>/; en local, en la raíz.
@@ -26,7 +25,9 @@ const pdfHelper = () => ({
       const url = new URL(req.url, 'http://pc')
       const name = basename(url.searchParams.get('name') ?? 'partitura.pdf').replace(/[^\w.\- ]/g, '_').replace(/(\.pdf)?$/i, '.pdf')
       const paginas = url.searchParams.get('paginas')
-      const dir = await mkdtemp(join(tmpdir(), 'piano-pdf-'))
+      // Dentro de la app (no en /tmp): el Audiveris de Flathub solo ve ~/Documentos.
+      await mkdir('scores', { recursive: true })
+      const dir = await mkdtemp(resolve('scores/.convertir-'))
       try {
         const chunks = []
         for await (const chunk of req) chunks.push(chunk)
@@ -43,7 +44,7 @@ const pdfHelper = () => ({
           const missing = log.includes('No se encontró Audiveris')
           return send(500, {
             error: missing
-              ? 'Falta instalar Audiveris en la PC (https://github.com/audiveris/audiveris).'
+              ? 'Falta instalar Audiveris en la PC.'
               : `Audiveris no pudo leer el PDF: ${log.trim().split('\n').slice(-3).join(' ')}`,
           })
         }
