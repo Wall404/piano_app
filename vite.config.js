@@ -21,6 +21,12 @@ const pdfHelper = () => ({
         res.setHeader('Content-Type', 'application/json')
         res.end(JSON.stringify(body))
       }
+      // La página publicada (https) también la usa, apuntando a http://localhost:5173.
+      res.setHeader('Access-Control-Allow-Origin', '*')
+      res.setHeader('Access-Control-Allow-Headers', '*')
+      res.setHeader('Access-Control-Allow-Private-Network', 'true')
+      if (req.method === 'OPTIONS') return send(204, {})
+      if (req.method === 'GET') return send(200, { ok: true }) // «la app local está abierta»
       if (req.method !== 'POST') return send(405, { error: 'Usá POST.' })
       const url = new URL(req.url, 'http://pc')
       const name = basename(url.searchParams.get('name') ?? 'partitura.pdf').replace(/[^\w.\- ]/g, '_').replace(/(\.pdf)?$/i, '.pdf')
